@@ -137,71 +137,24 @@ def _build_verified_structural(
     file_index: List[str],
 ) -> Dict[str, List[Dict[str, Any]]]:
     """
-    Best-effort structural namespace for governance-grade surface mapping.
-    Populates routes/dependencies/schemas/enforcement from existing
-    deterministic outputs ONLY. Never infers — if no evidence, returns [].
+    Structural namespace populated ONLY from deterministic structural
+    extractor outputs. Never from claims, never from file-index pattern
+    matching. If a structural source doesn't exist yet, the bucket stays
+    empty with a "not_yet_extractable" note.
 
-    This is an optional, forward-looking namespace. v1 consumers should
-    treat it as best-effort.
+    Inputs per bucket:
+      - dependencies: howto install_steps with snippet_hash_verified evidence
+      - routes: howto route_inventory (when extractor exists)
+      - schemas: howto schema_inventory (when extractor exists)
+      - enforcement: howto enforcement_inventory (when extractor exists)
     """
-    import re
-
     structural: Dict[str, List[Dict[str, Any]]] = {
         "routes": [],
         "dependencies": [],
         "schemas": [],
         "enforcement": [],
     }
-
-    dep_patterns = re.compile(
-        r"dependenc|package\.json|requirements\.txt|pyproject\.toml|cargo\.toml|go\.mod|gemfile",
-        re.I,
-    )
-    schema_patterns = re.compile(
-        r"schema|migration|model|drizzle|prisma|sequelize|typeorm|alembic|\.sql$",
-        re.I,
-    )
-    route_patterns = re.compile(
-        r"route|endpoint|api|controller|handler|router",
-        re.I,
-    )
-    enforcement_patterns = re.compile(
-        r"auth|permission|rbac|acl|guard|middleware|policy|validator",
-        re.I,
-    )
-
-    for claim in verified_claims:
-        statement_lower = claim.get("statement", "").lower()
-        evidence = claim.get("evidence", [])
-
-        placed = False
-        for ev in evidence:
-            path = ev.get("path", "").lower() if isinstance(ev, dict) else ""
-
-            if dep_patterns.search(path) or dep_patterns.search(statement_lower):
-                structural["dependencies"].append(claim)
-                placed = True
-                break
-            if schema_patterns.search(path):
-                structural["schemas"].append(claim)
-                placed = True
-                break
-            if route_patterns.search(path):
-                structural["routes"].append(claim)
-                placed = True
-                break
-            if enforcement_patterns.search(path):
-                structural["enforcement"].append(claim)
-                placed = True
-                break
-
-        if not placed:
-            if route_patterns.search(statement_lower):
-                structural["routes"].append(claim)
-            elif schema_patterns.search(statement_lower):
-                structural["schemas"].append(claim)
-            elif enforcement_patterns.search(statement_lower):
-                structural["enforcement"].append(claim)
+    structural_notes: Dict[str, str] = {}
 
     install_steps = howto.get("install_steps", [])
     if isinstance(install_steps, list):
@@ -209,34 +162,72 @@ def _build_verified_structural(
             if not isinstance(step, dict):
                 continue
             ev = step.get("evidence")
-            if isinstance(ev, dict) and ev.get("snippet_hash_verified") is True and ev.get("snippet_hash") and ev.get("path"):
-                cmd = step.get("command", "")
-                if cmd and ("install" in cmd.lower() or "pip" in cmd.lower() or "npm" in cmd.lower()):
-                    structural["dependencies"].append({
-                        "id": f"howto_install_{len(structural['dependencies'])}",
-                        "statement": step.get("description", cmd),
-                        "section": "howto:install_steps",
-                        "evidence": [ev],
-                        "confidence": 0.5,
-                    })
+            if isinstance(ev, dict) and ev.get("snippet_hash") and ev.get("path"):
+                structural["dependencies"].append({
+                    "id": f"howto_dep_{len(structural['dependencies'])}",
+                    "statement": step.get("description", step.get("command", "")),
+                    "section": "howto:install_steps",
+                    "evidence": [ev],
+                    "confidence": 0.5,
+                    "source": "deterministic_extractor:howto",
+                })
 
-    schema_files = [
-        f for f in file_index
-        if schema_patterns.search(f)
-    ]
-    for sf in schema_files[:5]:
-        already = any(
-            any(e.get("path", "") == sf for e in c.get("evidence", []) if isinstance(e, dict))
-            for c in structural["schemas"]
-        )
-        if not already:
-            structural["schemas"].append({
-                "id": f"structural_schema_file_{sf}",
-                "statement": f"Schema/migration file detected: {sf}",
-                "section": "structural:file_index",
-                "evidence": [{"path": sf, "kind": "file_exists_index", "note": "from file index, not claim evidence"}],
-                "confidence": 0.3,
-            })
+    route_inventory = howto.get("route_inventory", [])
+    if isinstance(route_inventory, list):
+        for entry in route_inventory:
+            if not isinstance(entry, dict):
+                continue
+            ev = entry.get("evidence")
+            if isinstance(ev, dict) and ev.get("snippet_hash") and ev.get("path"):
+                structural["routes"].append({
+                    "id": f"howto_route_{len(structural['routes'])}",
+                    "statement": entry.get("description", entry.get("route", "")),
+                    "section": "howto:route_inventory",
+                    "evidence": [ev],
+                    "confidence": 0.5,
+                    "source": "deterministic_extractor:howto",
+                })
+    if not structural["routes"]:
+        structural_notes["routes"] = "not_yet_extractable: route inventory extractor not implemented"
+
+    schema_inventory = howto.get("schema_inventory", [])
+    if isinstance(schema_inventory, list):
+        for entry in schema_inventory:
+            if not isinstance(entry, dict):
+                continue
+            ev = entry.get("evidence")
+            if isinstance(ev, dict) and ev.get("snippet_hash") and ev.get("path"):
+                structural["schemas"].append({
+                    "id": f"howto_schema_{len(structural['schemas'])}",
+                    "statement": entry.get("description", entry.get("schema", "")),
+                    "section": "howto:schema_inventory",
+                    "evidence": [ev],
+                    "confidence": 0.5,
+                    "source": "deterministic_extractor:howto",
+                })
+    if not structural["schemas"]:
+        structural_notes["schemas"] = "not_yet_extractable: schema inventory extractor not implemented"
+
+    enforcement_inventory = howto.get("enforcement_inventory", [])
+    if isinstance(enforcement_inventory, list):
+        for entry in enforcement_inventory:
+            if not isinstance(entry, dict):
+                continue
+            ev = entry.get("evidence")
+            if isinstance(ev, dict) and ev.get("snippet_hash") and ev.get("path"):
+                structural["enforcement"].append({
+                    "id": f"howto_enforce_{len(structural['enforcement'])}",
+                    "statement": entry.get("description", ""),
+                    "section": "howto:enforcement_inventory",
+                    "evidence": [ev],
+                    "confidence": 0.5,
+                    "source": "deterministic_extractor:howto",
+                })
+    if not structural["enforcement"]:
+        structural_notes["enforcement"] = "not_yet_extractable: enforcement inventory extractor not implemented"
+
+    if structural_notes:
+        structural["_notes"] = structural_notes
 
     return structural
 
@@ -269,9 +260,9 @@ def _build_metrics(
     rci_score = round((claims_coverage + unknowns_coverage + howto_coverage) / 3.0, 4)
 
     return {
-        "rci": {
+        "rci_reporting_completeness": {
             "score": rci_score,
-            "label": "Reporting Completeness Index",
+            "label": "RCI — Reporting Completeness",
             "formula": "average(claims_coverage, unknowns_coverage, howto_completeness)",
             "components": {
                 "claims_coverage": round(claims_coverage, 4),
@@ -280,11 +271,18 @@ def _build_metrics(
             },
             "interpretation": "Composite completeness of PTA reporting. NOT a security or structural visibility score.",
         },
-        "dci_v1_claims_visibility": {
+        "dci_v1_claim_visibility": {
             "score": round(claims_coverage, 4),
-            "label": "DCI v1 — Claims Visibility",
+            "label": "DCI_v1_claim_visibility",
             "formula": "verified_claims / total_claims",
-            "interpretation": "Percent of claims with deterministic hash-verified evidence. Structural DCI (routes/deps/schemas/enforcement) planned for v2.",
+            "interpretation": "Percent of claims with deterministic hash-verified evidence. This is claim-evidence visibility, NOT system surface visibility.",
+        },
+        "dci_v2_structural_visibility": {
+            "score": None,
+            "label": "DCI_v2_structural_visibility (not implemented)",
+            "formula": "verified_structural_items / total_structural_surface",
+            "interpretation": "Structural surface visibility (routes/deps/schemas/enforcement). Not yet implemented — requires dedicated structural extractors.",
+            "status": "not_implemented",
         },
     }
 

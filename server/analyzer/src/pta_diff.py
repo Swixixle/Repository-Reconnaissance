@@ -57,12 +57,12 @@ def diff_packs(pack_a: Dict[str, Any], pack_b: Dict[str, Any]) -> Dict[str, Any]
             pack_b.get("hashes", {}).get("snippets", []),
         ),
         "rci_delta": _diff_metric(
-            pack_a.get("metrics", {}).get("rci", {}),
-            pack_b.get("metrics", {}).get("rci", {}),
+            pack_a.get("metrics", {}).get("rci_reporting_completeness", {}),
+            pack_b.get("metrics", {}).get("rci_reporting_completeness", {}),
         ),
         "dci_delta": _diff_metric(
-            pack_a.get("metrics", {}).get("dci_v1_claims_visibility", {}),
-            pack_b.get("metrics", {}).get("dci_v1_claims_visibility", {}),
+            pack_a.get("metrics", {}).get("dci_v1_claim_visibility", {}),
+            pack_b.get("metrics", {}).get("dci_v1_claim_visibility", {}),
         ),
     }
 
@@ -196,7 +196,7 @@ def render_diff_report(diff: Dict[str, Any]) -> str:
     ]
 
     dci = diff.get("dci_delta", {})
-    lines.append("## DCI v1 (Claims Visibility) Delta")
+    lines.append("## DCI_v1_claim_visibility Delta")
     lines.append("")
     lines.append(f"- Old: {dci.get('old_score', 0):.2%}")
     lines.append(f"- New: {dci.get('new_score', 0):.2%}")
@@ -204,7 +204,7 @@ def render_diff_report(diff: Dict[str, Any]) -> str:
     lines.append("")
 
     rci = diff.get("rci_delta", {})
-    lines.append("## RCI (Reporting Completeness) Delta")
+    lines.append("## RCI_reporting_completeness Delta")
     lines.append("")
     lines.append(f"- Old: {rci.get('old_score', 0):.2%}")
     lines.append(f"- New: {rci.get('new_score', 0):.2%}")

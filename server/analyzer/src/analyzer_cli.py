@@ -131,8 +131,8 @@ def diff(
 
     dci = result.get("dci_delta", {})
     rci = result.get("rci_delta", {})
-    console.print(f"  DCI v1: {dci.get('old_score', 0):.2%} -> {dci.get('new_score', 0):.2%} ({dci.get('direction', '?')})")
-    console.print(f"  RCI: {rci.get('old_score', 0):.2%} -> {rci.get('new_score', 0):.2%} ({rci.get('direction', '?')})")
+    console.print(f"  DCI_v1_claim_visibility: {dci.get('old_score', 0):.2%} -> {dci.get('new_score', 0):.2%} ({dci.get('direction', '?')})")
+    console.print(f"  RCI_reporting_completeness: {rci.get('old_score', 0):.2%} -> {rci.get('new_score', 0):.2%} ({rci.get('direction', '?')})")
 
 
 @app.command("render")

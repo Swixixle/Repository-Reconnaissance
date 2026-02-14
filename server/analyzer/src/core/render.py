@@ -60,11 +60,15 @@ def _count_verified_claims(pack: Dict[str, Any]) -> int:
 
 
 def _get_rci(pack: Dict[str, Any]) -> Dict[str, Any]:
-    return pack.get("metrics", {}).get("rci", {})
+    return pack.get("metrics", {}).get("rci_reporting_completeness", {})
 
 
 def _get_dci(pack: Dict[str, Any]) -> Dict[str, Any]:
-    return pack.get("metrics", {}).get("dci_v1_claims_visibility", {})
+    return pack.get("metrics", {}).get("dci_v1_claim_visibility", {})
+
+
+def _get_dci_v2(pack: Dict[str, Any]) -> Dict[str, Any]:
+    return pack.get("metrics", {}).get("dci_v2_structural_visibility", {})
 
 
 def _render_engineer(pack: Dict[str, Any]) -> str:
@@ -91,16 +95,23 @@ def _render_engineer(pack: Dict[str, Any]) -> str:
     lines.append("")
 
     dci = _get_dci(pack)
+    dci_v2 = _get_dci_v2(pack)
     rci = _get_rci(pack)
 
-    lines.append("## DCI v1 — Claims Visibility")
+    lines.append("## DCI_v1_claim_visibility")
     lines.append("")
     lines.append(f"**Score:** {dci.get('score', 0):.2%}")
     lines.append(f"**Formula:** {dci.get('formula', 'N/A')}")
     lines.append(f"*{dci.get('interpretation', '')}*")
     lines.append("")
 
-    lines.append("## Reporting Completeness Index (RCI)")
+    lines.append("## DCI_v2_structural_visibility")
+    lines.append("")
+    lines.append(f"**Status:** {dci_v2.get('status', 'not_implemented')}")
+    lines.append(f"*{dci_v2.get('interpretation', '')}*")
+    lines.append("")
+
+    lines.append("## RCI_reporting_completeness")
     lines.append("")
     lines.append(f"**Score:** {rci.get('score', 0):.2%}")
     lines.append(f"**Formula:** {rci.get('formula', 'N/A')}")
@@ -128,17 +139,27 @@ def _render_engineer(pack: Dict[str, Any]) -> str:
             lines.append("")
 
     structural = pack.get("verified_structural", {})
-    if structural and any(v for v in structural.values() if isinstance(v, list) and v):
-        lines.append("## Verified Structural (best-effort)")
-        lines.append("")
+    has_structural = any(v for k, v in structural.items() if k != "_notes" and isinstance(v, list) and v)
+    structural_notes = structural.get("_notes", {})
+
+    lines.append("## Verified Structural (deterministic extractors only)")
+    lines.append("")
+    if has_structural:
         for bucket, items in sorted(structural.items()):
-            if not isinstance(items, list) or not items:
+            if bucket == "_notes" or not isinstance(items, list) or not items:
                 continue
             lines.append(f"### {bucket}")
             lines.append("")
             for item in items:
                 lines.append(f"- {item.get('statement', '?')}")
+                src = item.get("source", "")
+                if src:
+                    lines.append(f"  Source: `{src}`")
             lines.append("")
+    for bucket, note in sorted(structural_notes.items()) if isinstance(structural_notes, dict) else []:
+        lines.append(f"- **{bucket}**: {note}")
+    if structural_notes:
+        lines.append("")
 
     lines.append("## Known Unknown Surface")
     lines.append("")
@@ -202,12 +223,17 @@ def _render_auditor(pack: Dict[str, Any]) -> str:
             lines.append("")
 
     dci = _get_dci(pack)
+    dci_v2 = _get_dci_v2(pack)
     rci = _get_rci(pack)
-    lines.append("## DCI v1 — Claims Visibility")
+    lines.append("## DCI_v1_claim_visibility")
     lines.append("")
     lines.append(f"**{dci.get('score', 0):.2%}** — {dci.get('interpretation', '')}")
     lines.append("")
-    lines.append("## Reporting Completeness Index (RCI)")
+    lines.append("## DCI_v2_structural_visibility")
+    lines.append("")
+    lines.append(f"**Status:** {dci_v2.get('status', 'not_implemented')} — {dci_v2.get('interpretation', '')}")
+    lines.append("")
+    lines.append("## RCI_reporting_completeness")
     lines.append("")
     lines.append(f"**{rci.get('score', 0):.2%}** — {rci.get('interpretation', '')}")
     lines.append("")
@@ -223,6 +249,8 @@ def _render_executive(pack: Dict[str, Any]) -> str:
     unknown_count = len([u for u in unknowns if u.get("status") == "UNKNOWN"])
     verified_cat_count = len([u for u in unknowns if u.get("status") == "VERIFIED"])
 
+    dci_v2 = _get_dci_v2(pack)
+
     lines = [
         f"# Program Totality Report — Executive Summary",
         f"",
@@ -234,16 +262,18 @@ def _render_executive(pack: Dict[str, Any]) -> str:
         "",
         f"| Metric | Value |",
         f"|--------|-------|",
-        f"| DCI v1 (Claims Visibility) | {dci.get('score', 0):.1%} |",
-        f"| RCI (Reporting Completeness) | {rci.get('score', 0):.1%} |",
+        f"| DCI_v1_claim_visibility | {dci.get('score', 0):.1%} |",
+        f"| DCI_v2_structural_visibility | {dci_v2.get('status', 'not_implemented')} |",
+        f"| RCI_reporting_completeness | {rci.get('score', 0):.1%} |",
         f"| Files Scanned | {summary.get('total_files', 0)} |",
         f"| Total Claims | {summary.get('total_claims', 0)} |",
         f"| Verified Claims | {summary.get('verified_claims', 0)} |",
         f"| Unknown Categories | {unknown_count} / {len(unknowns)} |",
         f"| Verified Categories | {verified_cat_count} / {len(unknowns)} |",
         "",
-        f"*DCI v1: {dci.get('interpretation', '')}*",
-        f"*RCI: {rci.get('interpretation', '')}*",
+        f"*DCI_v1_claim_visibility: {dci.get('interpretation', '')}*",
+        f"*DCI_v2_structural_visibility: {dci_v2.get('interpretation', '')}*",
+        f"*RCI_reporting_completeness: {rci.get('interpretation', '')}*",
         "",
         "## RCI Coverage Breakdown",
         "",
