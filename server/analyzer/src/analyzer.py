@@ -169,6 +169,8 @@ class Analyzer:
             run_id=self.acquire_result.run_id if self.acquire_result else None,
         )
         pack_path = save_evidence_pack(evidence_pack, self.output_dir)
+        if not pack_path.exists():
+            raise RuntimeError(f"FATAL: EvidencePack not written to {pack_path}. Refusing to continue.")
         self.console.print(f"  EvidencePack saved to {pack_path}")
 
         self.console.print(f"[bold]Step 8: Rendering {self.render_mode} report...[/bold]")
