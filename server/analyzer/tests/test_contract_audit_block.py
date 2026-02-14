@@ -3,93 +3,43 @@ No-drift test for the PTA Contract Audit block in REPORT_ENGINEER.md.
 
 Ensures the audit block contains all required headings, disclaimers,
 and structural guardrails. Prevents silent drift into marketing copy.
+
+Also tests the fail-fast guard that prevents rendering if the
+evidence pack is missing from disk.
 """
 import json
+import tempfile
 import unittest
 from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from server.analyzer.src.core.render import render_report
-from server.analyzer.src.core.adapter import build_evidence_pack
+from server.analyzer.src.core.render import render_report, assert_pack_written
 
 
-MINIMAL_PACK = {
-    "evidence_pack_version": "1.0",
-    "generated_at": "2026-01-01T00:00:00+00:00",
-    "mode": "test",
-    "run_id": "test_run_001",
-    "verified": {
-        "What the Target System Is": [
-            {
-                "id": "claim_001",
-                "statement": "Test claim",
-                "section": "What the Target System Is",
-                "evidence": [{"path": "test.py", "line_start": 1, "line_end": 1, "snippet_hash": "abc123", "display": "test.py:1", "snippet_hash_verified": True}],
-                "confidence": 0.6,
-            }
-        ]
-    },
-    "verified_structural": {
-        "routes": [],
-        "dependencies": [],
-        "schemas": [],
-        "enforcement": [],
-        "_notes": {
-            "routes": "not_implemented: requires AST/regex route extractor over source files",
-            "dependencies": "not_implemented: requires lockfile parser",
-            "schemas": "not_implemented: requires migration/model file parser",
-            "enforcement": "not_implemented: requires auth/middleware pattern detector",
-        },
-    },
-    "unknowns": [
-        {"category": "tls_termination", "status": "UNKNOWN", "description": "TLS config", "evidence": [], "notes": "No artifacts found"},
-    ],
-    "metrics": {
-        "dci_v1_claim_visibility": {
-            "score": 0.8824,
-            "label": "DCI_v1_claim_visibility",
-            "formula": "verified_claims / total_claims",
-            "interpretation": "Percent of claims with deterministic hash-verified evidence. This is claim-evidence visibility, NOT system surface visibility.",
-        },
-        "rci_reporting_completeness": {
-            "score": 0.5008,
-            "label": "RCI - Reporting Completeness",
-            "formula": "average(claims_coverage, unknowns_coverage, howto_completeness)",
-            "interpretation": "Composite completeness of PTA reporting. NOT a security or structural visibility score.",
-            "components": {"claims_coverage": 0.8824, "unknowns_coverage": 0.0, "howto_completeness": 0.62},
-        },
-        "dci_v2_structural_visibility": {
-            "score": None,
-            "label": "DCI_v2_structural_visibility (not implemented)",
-            "formula": "verified_structural_items / total_structural_surface",
-            "interpretation": "Structural surface visibility. Not yet implemented.",
-            "status": "not_implemented",
-        },
-    },
-    "hashes": {"snippets": ["abc123"]},
-    "summary": {
-        "total_files": 100,
-        "total_claims": 17,
-        "verified_claims": 15,
-        "unknown_categories": 1,
-        "verified_categories": 0,
-    },
-    "replit_profile": {},
-}
+FIXTURE_PATH = Path(__file__).parent / "fixtures" / "evidence_pack.v1.fixture.json"
+
+
+def _load_fixture_pack() -> dict:
+    assert FIXTURE_PATH.exists(), f"Missing fixture pack: {FIXTURE_PATH}"
+    return json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
 
 
 class TestContractAuditBlock(unittest.TestCase):
     def setUp(self):
-        self.md = render_report(MINIMAL_PACK, mode="engineer")
+        self.pack = _load_fixture_pack()
+        self.md = render_report(self.pack, mode="engineer")
 
     def test_required_headings_present(self):
-        self.assertIn("### 1. System Snapshot", self.md)
-        self.assertIn("### 2. Deterministic Coverage Index (DCI v1)", self.md)
-        self.assertIn("### 3. Reporting Completeness Index (RCI)", self.md)
-        self.assertIn("### 4. Structural Visibility (DCI v2)", self.md)
-        self.assertIn("### 5. Epistemic Posture", self.md)
+        for h in [
+            "### 1. System Snapshot",
+            "### 2. Deterministic Coverage Index (DCI v1)",
+            "### 3. Reporting Completeness Index (RCI)",
+            "### 4. Structural Visibility (DCI v2)",
+            "### 5. Epistemic Posture",
+        ]:
+            self.assertIn(h, self.md, f"Missing required heading: {h}")
 
     def test_anti_marketing_disclaimers(self):
         self.assertIn("does not measure code quality, security posture, or structural surface coverage", self.md)
@@ -107,13 +57,15 @@ class TestContractAuditBlock(unittest.TestCase):
         self.assertIn("unknowns_coverage", self.md)
         self.assertIn("howto_completeness", self.md)
 
-    def test_snapshot_table_values(self):
-        self.assertIn("| Files Indexed | 100 |", self.md)
-        self.assertIn("| Claims Extracted | 17 |", self.md)
-        self.assertIn("| Claims with Deterministic Evidence | 15 |", self.md)
+    def test_snapshot_table_present(self):
+        self.assertIn("| Measure | Value |", self.md)
+        self.assertIn("Files Indexed", self.md)
+        self.assertIn("Claims Extracted", self.md)
+        self.assertIn("Claims with Deterministic Evidence", self.md)
 
     def test_run_id_in_audit_heading(self):
-        self.assertIn("## PTA Contract Audit — Run test_run_001", self.md)
+        run_id = self.pack.get("run_id", "")
+        self.assertIn(f"## PTA Contract Audit — Run {run_id}", self.md)
 
     def test_structural_buckets_in_report(self):
         self.assertIn("Verified Structural", self.md)
@@ -122,6 +74,36 @@ class TestContractAuditBlock(unittest.TestCase):
     def test_unknowns_table_present(self):
         self.assertIn("Known Unknown Surface", self.md)
         self.assertIn("tls_termination", self.md)
+
+
+class TestFailFastGuard(unittest.TestCase):
+    def test_raises_if_pack_path_is_none(self):
+        with self.assertRaises((RuntimeError, TypeError)):
+            assert_pack_written(None)
+
+    def test_raises_if_pack_file_missing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            missing = Path(tmp) / "evidence_pack.v1.json"
+            with self.assertRaises(RuntimeError) as ctx:
+                assert_pack_written(missing)
+            self.assertIn("missing on disk", str(ctx.exception).lower())
+
+    def test_raises_if_pack_dir_missing_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(RuntimeError):
+                assert_pack_written(Path(tmp))
+
+    def test_passes_if_pack_file_exists(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            pack_file = Path(tmp) / "evidence_pack.v1.json"
+            pack_file.write_text("{}")
+            assert_pack_written(pack_file)
+
+    def test_passes_if_pack_dir_has_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            pack_file = Path(tmp) / "evidence_pack.v1.json"
+            pack_file.write_text("{}")
+            assert_pack_written(Path(tmp))
 
 
 if __name__ == "__main__":

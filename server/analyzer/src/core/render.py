@@ -28,6 +28,20 @@ def render_report(pack: Dict[str, Any], mode: str = "engineer") -> str:
         return _render_engineer(pack)
 
 
+def assert_pack_written(pack_path: Path) -> None:
+    if pack_path is None:
+        raise RuntimeError("save_evidence_pack() returned None; refusing to render report")
+    if pack_path.is_dir():
+        expected_file = pack_path / "evidence_pack.v1.json"
+    else:
+        expected_file = pack_path
+    if not expected_file.exists() or not expected_file.is_file():
+        raise RuntimeError(
+            f"Evidence pack missing on disk: expected {expected_file}. "
+            "Refusing to render report to prevent silent partial output."
+        )
+
+
 def save_report(content: str, output_dir: Path, mode: str) -> Path:
     filename = f"REPORT_{mode.upper()}.md"
     path = output_dir / filename

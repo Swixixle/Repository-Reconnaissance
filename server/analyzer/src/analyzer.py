@@ -14,7 +14,7 @@ from .core.replit_profile import ReplitProfiler
 from .core.evidence import make_evidence, make_evidence_from_line, make_file_exists_evidence, validate_evidence_list
 from .core.unknowns import compute_known_unknowns
 from .core.adapter import build_evidence_pack, save_evidence_pack
-from .core.render import render_report, save_report
+from .core.render import render_report, save_report, assert_pack_written
 
 load_dotenv()
 
@@ -169,8 +169,7 @@ class Analyzer:
             run_id=self.acquire_result.run_id if self.acquire_result else None,
         )
         pack_path = save_evidence_pack(evidence_pack, self.output_dir)
-        if not pack_path.exists():
-            raise RuntimeError(f"FATAL: EvidencePack not written to {pack_path}. Refusing to continue.")
+        assert_pack_written(pack_path)
         self.console.print(f"  EvidencePack saved to {pack_path}")
 
         self.console.print(f"[bold]Step 8: Rendering {self.render_mode} report...[/bold]")
