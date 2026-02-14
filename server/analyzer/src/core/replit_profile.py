@@ -3,10 +3,7 @@ import re
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
-try:
-    from .evidence import make_evidence_from_line, make_evidence
-except ImportError:
-    from core.evidence import make_evidence_from_line, make_evidence
+from .evidence import make_evidence_from_line, make_evidence
 
 
 class ReplitProfiler:

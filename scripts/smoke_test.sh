@@ -1,30 +1,39 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-TMP=$(mktemp -d)
+TMP="$(mktemp -d)"
+OUT="$TMP/out"
 trap 'rm -rf "$TMP"' EXIT
 
 echo "=== Smoke Test: Program Totality Analyzer ==="
 
-echo "[1/4] Testing CLI help..."
-python server/analyzer/analyzer_cli.py --help > /dev/null
-echo "  PASS: --help exits cleanly"
+echo "[1/6] pta --help"
+pta --help >/dev/null
+echo "  PASS"
 
-echo "[2/4] Running deterministic analysis (--no-llm)..."
-python server/analyzer/analyzer_cli.py analyze --replit --no-llm -o "$TMP/out"
-echo "  PASS: analysis completed"
+echo "[2/6] python -m server.analyzer.src --help"
+python -m server.analyzer.src --help >/dev/null
+echo "  PASS"
 
-echo "[3/4] Checking output files..."
+echo "[3/6] python server/analyzer/analyzer_cli.py --help"
+python server/analyzer/analyzer_cli.py --help >/dev/null
+echo "  PASS"
+
+echo "[4/6] Deterministic analysis (--no-llm)..."
+pta analyze --replit --no-llm -o "$OUT"
+echo "  PASS"
+
+echo "[5/6] Checking output files..."
 for f in target_howto.json coverage.json claims.json index.json DOSSIER.md replit_profile.json; do
-  if [ ! -f "$TMP/out/$f" ]; then
+  if [ ! -f "$OUT/$f" ]; then
     echo "  FAIL: missing $f"
     exit 1
   fi
 done
-echo "  PASS: all expected files present"
+echo "  PASS"
 
-echo "[4/4] Validating no invalid evidence (line_start < 1)..."
-python3 - "$TMP/out" <<'PY'
+echo "[6/6] Validating no invalid evidence (line_start < 1)..."
+python3 - "$OUT" <<'PY'
 import json, glob, sys
 paths = glob.glob(sys.argv[1] + "/**/*.json", recursive=True)
 bad = []
@@ -48,7 +57,7 @@ if bad:
     for w, e in bad[:5]:
         print(f"    {w}: {e}")
     sys.exit(1)
-print("  PASS: zero invalid evidence entries")
+print("  PASS")
 PY
 
 echo ""

@@ -22,9 +22,10 @@ Given a software project (GitHub repo, local folder, or Replit workspace), the a
 pip install -e .
 ```
 
-This registers the `pta` command. Alternatively, run directly:
+This registers the `pta` command. Alternatively, run as a module or directly:
 
 ```bash
+python -m server.analyzer.src --help
 python server/analyzer/analyzer_cli.py --help
 ```
 
