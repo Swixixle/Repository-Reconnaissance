@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 
 from core.acquire import acquire_target, AcquireResult
 from core.replit_profile import ReplitProfiler
-from core.evidence import make_evidence, make_evidence_from_line
+from core.evidence import make_evidence, make_evidence_from_line, make_file_exists_evidence, validate_evidence_list
 
 load_dotenv()
 
@@ -113,12 +113,17 @@ class Analyzer:
         self.save_json("index.json", file_index)
         self.save_json("target_howto.json", howto)
         self.save_json("claims.json", claims)
+        replit_detected = self.replit_profile.get("replit_detected", False) if self.replit_profile else False
+        replit_detection_ev = self.replit_profile.get("replit_detection_evidence", []) if self.replit_profile else []
         self.save_json("coverage.json", {
+            "mode_requested": self.mode,
             "mode": self.mode,
             "run_id": self.acquire_result.run_id,
             "scanned": len(file_index),
             "skipped": self._skipped_count,
-            "is_replit": self.replit_profile is not None and self.replit_profile.get("is_replit", False),
+            "replit_detected": replit_detected,
+            "replit_detection_evidence": replit_detection_ev,
+            "is_replit": replit_detected,
             "self_skip": {
                 "enabled": bool(self._self_skip_paths),
                 "excluded_paths": list(self._self_skip_paths),
@@ -374,6 +379,8 @@ class Analyzer:
         def _is_verified_evidence(ev):
             if not isinstance(ev, dict):
                 return False
+            if ev.get("kind") == "file_exists":
+                return (Path(self.repo_dir) / ev.get("path", "")).exists()
             if ev.get("snippet_hash_verified") is True:
                 return True
             if ev.get("snippet_hash") and self._verify_single_evidence(ev):
@@ -740,7 +747,16 @@ RULES:
             cid = f"claim_{claim_id:03d}"
             verified_ev = []
             for ev in evidence_list:
-                if isinstance(ev, dict) and ev.get("snippet_hash"):
+                if not isinstance(ev, dict):
+                    continue
+                if ev.get("kind") == "file_exists":
+                    v = dict(ev)
+                    v["verified"] = (Path(self.repo_dir) / ev.get("path", "")).exists()
+                    if not v["verified"]:
+                        confidence = min(confidence, 0.20)
+                        status = "unverified"
+                    verified_ev.append(v)
+                elif ev.get("snippet_hash"):
                     v = dict(ev)
                     v["snippet_hash_verified"] = self._verify_single_evidence(ev)
                     if not v["snippet_hash_verified"]:
@@ -914,25 +930,52 @@ RULES:
                     ev = make_evidence_from_line("package.json", line_num, actual_line) if line_num else None
                     howto["run_prod"].append({"step": "Start production", "command": "npm start", "evidence": ev})
 
-                line1 = self._find_line(pkg_json, '"name"') or 1
-                actual_line = pkg_lines[line1 - 1].strip() if line1 <= len(pkg_lines) else ""
-                howto["install_steps"].append({"step": "Install Node dependencies", "command": "npm install", "evidence": make_evidence_from_line("package.json", line1, actual_line)})
             except json.JSONDecodeError:
                 pass
+
+            if (self.repo_dir / "package-lock.json").exists():
+                howto["install_steps"].append({
+                    "step": "Install Node dependencies",
+                    "command": "npm ci",
+                    "evidence": make_file_exists_evidence("package-lock.json"),
+                })
+            elif (self.repo_dir / "pnpm-lock.yaml").exists():
+                howto["install_steps"].append({
+                    "step": "Install Node dependencies",
+                    "command": "pnpm i",
+                    "evidence": make_file_exists_evidence("pnpm-lock.yaml"),
+                })
+            elif (self.repo_dir / "yarn.lock").exists():
+                howto["install_steps"].append({
+                    "step": "Install Node dependencies",
+                    "command": "yarn install",
+                    "evidence": make_file_exists_evidence("yarn.lock"),
+                })
 
         pyproject = self.repo_dir / "pyproject.toml"
         if pyproject.exists():
             howto["prereqs"].append("Python")
-            try:
-                first_line = pyproject.read_text(errors="ignore").splitlines()[0].strip()
-            except (IndexError, OSError):
-                first_line = "[project]"
-            howto["install_steps"].append({"step": "Install Python dependencies", "command": "pip install .", "evidence": make_evidence_from_line("pyproject.toml", 1, first_line)})
+            if (self.repo_dir / "poetry.lock").exists():
+                howto["install_steps"].append({
+                    "step": "Install Python dependencies",
+                    "command": "poetry install",
+                    "evidence": make_file_exists_evidence("poetry.lock"),
+                })
+            else:
+                howto["install_steps"].append({
+                    "step": "Install Python dependencies",
+                    "command": "pip install .",
+                    "evidence": make_file_exists_evidence("pyproject.toml"),
+                })
 
         requirements = self.repo_dir / "requirements.txt"
         if requirements.exists() and not pyproject.exists():
             howto["prereqs"].append("Python")
-            howto["install_steps"].append({"step": "Install Python dependencies", "command": "pip install -r requirements.txt", "evidence": make_evidence_from_line("requirements.txt", 1, "requirements.txt")})
+            howto["install_steps"].append({
+                "step": "Install Python dependencies",
+                "command": "pip install -r requirements.txt",
+                "evidence": make_file_exists_evidence("requirements.txt"),
+            })
 
         if self.replit_profile:
             rp = self.replit_profile
@@ -988,7 +1031,11 @@ RULES:
             lines.append(f"- **Language:** {rp.get('language', 'unknown')}")
             pb = rp.get("port_binding", {})
             if pb:
-                lines.append(f"- **Port:** {pb.get('port', 'env PORT')}, binds_all={pb.get('binds_all_interfaces')}, env_port={pb.get('uses_env_port')}")
+                port_val = pb.get('port')
+                if port_val:
+                    lines.append(f"- **Port:** {port_val}, binds_all={pb.get('binds_all_interfaces')}, env_port={pb.get('uses_env_port')}")
+                else:
+                    lines.append(f"- **Port:** Uses PORT env var; actual port determined at runtime. In Replit, PORT is injected.")
             secrets = rp.get("required_secrets", [])
             if secrets:
                 lines.append(f"- **Secrets ({len(secrets)}):** {', '.join(s['name'] for s in secrets)}")

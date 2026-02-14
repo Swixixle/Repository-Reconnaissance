@@ -43,6 +43,8 @@ class ReplitProfiler:
     def detect(self) -> Dict[str, Any]:
         profile: Dict[str, Any] = {
             "is_replit": False,
+            "replit_detected": False,
+            "replit_detection_evidence": [],
             "run_command": None,
             "language": None,
             "entrypoint": None,
@@ -60,18 +62,32 @@ class ReplitProfiler:
         replit_nix = self.root / "replit.nix"
 
         if replit_file.exists():
+            profile["replit_detected"] = True
             profile["is_replit"] = True
             parsed = self._parse_replit_file(replit_file)
             profile["replit_file_parsed"] = parsed
             profile["run_command"] = parsed.get("run")
             profile["entrypoint"] = parsed.get("entrypoint")
             profile["language"] = parsed.get("language")
+            profile["replit_detection_evidence"].extend(parsed.get("evidence", []))
 
         if replit_nix.exists():
+            profile["replit_detected"] = True
             profile["is_replit"] = True
             parsed_nix = self._parse_replit_nix(replit_nix)
             profile["replit_nix_parsed"] = parsed_nix
             profile["nix_packages"] = parsed_nix.get("packages", [])
+            profile["replit_detection_evidence"].extend(parsed_nix.get("evidence", []))
+
+        if not profile["replit_detected"]:
+            repl_env = os.environ.get("REPL_ID") or os.environ.get("REPL_SLUG")
+            if repl_env:
+                profile["replit_detected"] = True
+                profile["is_replit"] = True
+                profile["replit_detection_evidence"].append({
+                    "kind": "env_signal",
+                    "signal": "REPL_ID or REPL_SLUG environment variable present",
+                })
 
         if not profile["language"]:
             profile["language"] = self._detect_language()
@@ -223,32 +239,34 @@ class ReplitProfiler:
 
     def _detect_external_apis(self) -> List[Dict[str, Any]]:
         api_patterns = {
-            "OpenAI": r'openai|gpt-|chatgpt|dall-e',
-            "Stripe": r'stripe\.com|stripe\.api|sk_live_|pk_live_',
-            "Firebase": r'firebase|firestore',
-            "Supabase": r'supabase',
-            "AWS": r'aws-sdk|amazonaws\.com|s3\.put',
-            "Google Cloud": r'googleapis|google-cloud',
-            "Twilio": r'twilio',
-            "SendGrid": r'sendgrid|@sendgrid',
+            "OpenAI": r'(?:from\s+["\']?openai|import\s+.*openai|require\s*\(\s*["\']openai|new\s+OpenAI)',
+            "Stripe": r'(?:from\s+["\']?stripe|import\s+.*stripe|require\s*\(\s*["\']stripe|stripe\.com)',
+            "Firebase": r'(?:from\s+["\']?firebase|import\s+.*firebase|require\s*\(\s*["\']firebase)',
+            "Supabase": r'(?:from\s+["\']?@supabase|import\s+.*supabase|createClient.*supabase)',
+            "AWS": r'(?:from\s+["\']?aws-sdk|import\s+.*aws-sdk|require\s*\(\s*["\']aws-sdk|amazonaws\.com)',
+            "Google Cloud": r'(?:from\s+["\']?@google-cloud|googleapis)',
+            "Twilio": r'(?:from\s+["\']?twilio|require\s*\(\s*["\']twilio)',
+            "SendGrid": r'(?:from\s+["\']?@sendgrid|require\s*\(\s*["\']@sendgrid)',
             "GitHub API": r'api\.github\.com',
-            "Discord": r'discord\.js|discordapp\.com|discord\.com/api',
-            "Slack": r'slack\.com/api|@slack',
-            "Anthropic": r'anthropic|claude',
+            "Discord": r'(?:from\s+["\']?discord\.js|require\s*\(\s*["\']discord\.js)',
+            "Slack": r'(?:from\s+["\']?@slack|slack\.com/api)',
+            "Anthropic": r'(?:from\s+["\']?anthropic|import\s+.*anthropic|require\s*\(\s*["\']anthropic)',
         }
 
         found: Dict[str, List] = {}
 
         for rel, lines in self._walk_code_files():
-            full_text = "".join(lines).lower()
-            for api_name, pattern in api_patterns.items():
-                if re.search(pattern, full_text, re.IGNORECASE):
-                    if api_name not in found:
-                        found[api_name] = []
-                    if not any(e["path"] == rel for e in found[api_name]):
-                        found[api_name].append(make_evidence(rel, 0, 0, api_name))
+            for line_num, line in enumerate(lines, start=1):
+                for api_name, pattern in api_patterns.items():
+                    if re.search(pattern, line, re.IGNORECASE):
+                        if api_name not in found:
+                            found[api_name] = []
+                        if len(found[api_name]) < 5 and not any(e.get("path") == rel for e in found[api_name]):
+                            ev = make_evidence_from_line(rel, line_num, line.strip())
+                            if ev:
+                                found[api_name].append(ev)
 
-        return [{"api": k, "evidence_files": v[:5]} for k, v in found.items()]
+        return [{"api": k, "evidence_files": v} for k, v in found.items()]
 
     def _detect_observability(self) -> Dict[str, Any]:
         result: Dict[str, Any] = {"logging": False, "health_endpoint": False, "evidence": []}
