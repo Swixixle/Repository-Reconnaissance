@@ -3,6 +3,7 @@ Phase 3: Mode Rendering
 
 Renders analysis reports from EvidencePack only.
 Never re-reads extraction artifacts directly.
+Never re-runs extraction or analysis.
 
 Modes:
   - engineer: Full file:line references, raw evidence, verbose
@@ -33,6 +34,29 @@ def save_report(content: str, output_dir: Path, mode: str) -> Path:
     return path
 
 
+def _render_evidence_anchor(ev: dict) -> str:
+    display = ev.get("display", ev.get("path", "?"))
+    snippet_hash = ev.get("snippet_hash", "")
+    if snippet_hash:
+        return f"`{display}` (hash: `{snippet_hash}`)"
+    return f"`{display}`"
+
+
+def _get_verified_sections(pack: Dict[str, Any]) -> Dict[str, List[Dict]]:
+    verified = pack.get("verified", {})
+    if isinstance(verified, dict):
+        return verified
+    return {}
+
+
+def _count_verified_claims(pack: Dict[str, Any]) -> int:
+    total = 0
+    for section_claims in _get_verified_sections(pack).values():
+        if isinstance(section_claims, list):
+            total += len(section_claims)
+    return total
+
+
 def _render_engineer(pack: Dict[str, Any]) -> str:
     lines = [
         f"# Program Totality Report — Engineer View",
@@ -53,6 +77,7 @@ def _render_engineer(pack: Dict[str, Any]) -> str:
     lines.append(f"- Total claims: {summary.get('total_claims', 0)}")
     lines.append(f"- Verified claims: {summary.get('verified_claims', 0)}")
     lines.append(f"- Unknown categories: {summary.get('unknown_categories', 0)}")
+    lines.append(f"- Verified categories: {summary.get('verified_categories', 0)}")
     lines.append("")
 
     dci = pack.get("metrics", {}).get("dci", {})
@@ -67,42 +92,21 @@ def _render_engineer(pack: Dict[str, Any]) -> str:
     lines.append(f"*{dci.get('interpretation', '')}*")
     lines.append("")
 
-    lines.append("## Verified Routes")
-    lines.append("")
-    for route in pack.get("verified", {}).get("routes", []):
-        lines.append(f"### {route.get('description', 'Route')}")
-        lines.append(f"Confidence: {route.get('confidence', 0):.0%}")
-        for ev in route.get("evidence", []):
-            if isinstance(ev, dict):
-                lines.append(f"- Evidence: `{ev.get('display', ev.get('path', '?'))}`  hash: `{ev.get('snippet_hash', '?')}`")
+    verified_sections = _get_verified_sections(pack)
+    for section_name, claims in sorted(verified_sections.items()):
+        lines.append(f"## Verified: {section_name}")
         lines.append("")
-
-    lines.append("## Verified Dependencies")
-    lines.append("")
-    for dep in pack.get("verified", {}).get("dependencies", []):
-        lines.append(f"- {dep.get('description', '?')} (confidence: {dep.get('confidence', 0):.0%})")
-        for ev in dep.get("evidence", []):
-            if isinstance(ev, dict):
-                lines.append(f"  - `{ev.get('display', ev.get('path', '?'))}`")
-    lines.append("")
-
-    lines.append("## Verified Schemas")
-    lines.append("")
-    for schema in pack.get("verified", {}).get("schemas", []):
-        lines.append(f"- {schema.get('description', '?')}")
-        for ev in schema.get("evidence", []):
-            if isinstance(ev, dict):
-                lines.append(f"  - `{ev.get('display', ev.get('path', '?'))}`")
-    lines.append("")
-
-    lines.append("## Enforcement")
-    lines.append("")
-    for enf in pack.get("verified", {}).get("enforcement", []):
-        lines.append(f"- {enf.get('description', '?')} (confidence: {enf.get('confidence', 0):.0%})")
-        for ev in enf.get("evidence", []):
-            if isinstance(ev, dict):
-                lines.append(f"  - `{ev.get('display', ev.get('path', '?'))}`  hash: `{ev.get('snippet_hash', '?')}`")
-    lines.append("")
+        if not isinstance(claims, list) or not claims:
+            lines.append("No verified claims in this section.")
+            lines.append("")
+            continue
+        for claim in claims:
+            lines.append(f"### {claim.get('statement', '?')}")
+            lines.append(f"Confidence: {claim.get('confidence', 0):.0%}")
+            for ev in claim.get("evidence", []):
+                if isinstance(ev, dict):
+                    lines.append(f"- Evidence: {_render_evidence_anchor(ev)}")
+            lines.append("")
 
     lines.append("## Known Unknown Surface")
     lines.append("")
@@ -110,8 +114,7 @@ def _render_engineer(pack: Dict[str, Any]) -> str:
     lines.append("|----------|--------|-------|")
     for u in pack.get("unknowns", []):
         status = u.get("status", "UNKNOWN")
-        marker = "VERIFIED" if status == "VERIFIED" else "UNKNOWN"
-        lines.append(f"| {u.get('category', '?')} | {marker} | {u.get('notes', '')} |")
+        lines.append(f"| {u.get('category', '?')} | {status} | {u.get('notes', '')} |")
     lines.append("")
 
     hashes = pack.get("hashes", {}).get("snippets", [])
@@ -147,29 +150,24 @@ def _render_auditor(pack: Dict[str, Any]) -> str:
     for u in pack.get("unknowns", []):
         status = u.get("status", "UNKNOWN")
         ev_anchors = ", ".join(
-            e.get("display", "") for e in u.get("evidence", []) if isinstance(e, dict)
+            _render_evidence_anchor(e) for e in u.get("evidence", []) if isinstance(e, dict)
         ) or "—"
         lines.append(f"| {u.get('category', '?')} | **{status}** | {u.get('description', '')} | {ev_anchors} |")
     lines.append("")
 
-    lines.append("## Verified Enforcement Claims")
-    lines.append("")
-    for enf in pack.get("verified", {}).get("enforcement", []):
-        lines.append(f"- **{enf.get('description', '?')}**")
-        lines.append(f"  Confidence: {enf.get('confidence', 0):.0%}")
-        for ev in enf.get("evidence", []):
-            if isinstance(ev, dict):
-                lines.append(f"  - Evidence anchor: `{ev.get('display', '?')}` (hash: `{ev.get('snippet_hash', '?')}`)")
+    verified_sections = _get_verified_sections(pack)
+    for section_name, claims in sorted(verified_sections.items()):
+        if not isinstance(claims, list) or not claims:
+            continue
+        lines.append(f"## Verified: {section_name}")
         lines.append("")
-
-    lines.append("## Verified Routes (Evidence Anchors)")
-    lines.append("")
-    for route in pack.get("verified", {}).get("routes", []):
-        anchors = ", ".join(
-            f"`{e.get('display', '?')}`" for e in route.get("evidence", []) if isinstance(e, dict)
-        )
-        lines.append(f"- {route.get('description', '?')} — {anchors}")
-    lines.append("")
+        for claim in claims:
+            lines.append(f"- **{claim.get('statement', '?')}**")
+            lines.append(f"  Confidence: {claim.get('confidence', 0):.0%}")
+            for ev in claim.get("evidence", []):
+                if isinstance(ev, dict):
+                    lines.append(f"  - Evidence anchor: {_render_evidence_anchor(ev)}")
+            lines.append("")
 
     dci = pack.get("metrics", {}).get("dci", {})
     lines.append("## DCI Score")
@@ -185,7 +183,7 @@ def _render_executive(pack: Dict[str, Any]) -> str:
     dci = pack.get("metrics", {}).get("dci", {})
     unknowns = pack.get("unknowns", [])
     unknown_count = len([u for u in unknowns if u.get("status") == "UNKNOWN"])
-    verified_count = len([u for u in unknowns if u.get("status") == "VERIFIED"])
+    verified_cat_count = len([u for u in unknowns if u.get("status") == "VERIFIED"])
 
     lines = [
         f"# Program Totality Report — Executive Summary",
@@ -203,7 +201,7 @@ def _render_executive(pack: Dict[str, Any]) -> str:
         f"| Total Claims | {summary.get('total_claims', 0)} |",
         f"| Verified Claims | {summary.get('verified_claims', 0)} |",
         f"| Unknown Categories | {unknown_count} / {len(unknowns)} |",
-        f"| Verified Categories | {verified_count} / {len(unknowns)} |",
+        f"| Verified Categories | {verified_cat_count} / {len(unknowns)} |",
         "",
         f"*{dci.get('interpretation', '')}*",
         "",
@@ -218,19 +216,21 @@ def _render_executive(pack: Dict[str, Any]) -> str:
         lines.append(f"- **{k}**: [{bar}] {v:.0%}")
     lines.append("")
 
-    lines.append("## Surface Area")
+    lines.append("## Verified Surface Area")
     lines.append("")
-    verified = pack.get("verified", {})
-    lines.append(f"- Routes identified: {len(verified.get('routes', []))}")
-    lines.append(f"- Dependencies tracked: {len(verified.get('dependencies', []))}")
-    lines.append(f"- Schema elements: {len(verified.get('schemas', []))}")
-    lines.append(f"- Enforcement controls: {len(verified.get('enforcement', []))}")
+    verified_sections = _get_verified_sections(pack)
+    if verified_sections:
+        for section_name, claims in sorted(verified_sections.items()):
+            count = len(claims) if isinstance(claims, list) else 0
+            lines.append(f"- {section_name}: {count} verified claim(s)")
+    else:
+        lines.append("- No verified claims with deterministic evidence.")
     lines.append("")
 
     if unknown_count > 0:
         lines.append("## Operational Blind Spots")
         lines.append("")
-        lines.append("*INFERRED: The following categories lack deterministic evidence.*")
+        lines.append("*The following categories lack deterministic evidence.*")
         lines.append("")
         for u in unknowns:
             if u.get("status") == "UNKNOWN":

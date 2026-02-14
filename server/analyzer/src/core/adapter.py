@@ -6,16 +6,15 @@ contract for governance features. Does NOT modify original artifacts.
 
 Verification policy:
   - Only claims with snippet_hash_verified evidence are included in
-    the "verified" sections.
-  - Keyword matching in claim text is NOT used for classification.
-  - Claims without verified evidence anchors are excluded from the pack.
-  - Run commands and prerequisites without verified evidence are excluded.
+    the "verified" section.
+  - Claims are grouped by their original extractor-assigned section.
+  - No keyword reclassification or inference is performed.
+  - file_exists evidence with verified=True is also accepted.
 
 All downstream rendering and diff operations consume this pack only.
 """
 
 import json
-import hashlib
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone
@@ -39,9 +38,9 @@ def build_evidence_pack(
     This is a pure post-processing function — it reads but never modifies
     the original extraction artifacts.
 
-    Only claims with snippet_hash_verified evidence anchors are promoted
-    to the verified sections. Everything else is excluded to prevent
-    inflating the verified artifact count.
+    Only claims with deterministically verified evidence anchors
+    (snippet_hash_verified=True or file_exists with verified=True)
+    are included. Claims are grouped by their extractor-assigned section.
     """
     verified_claims = _get_verified_claims(claims)
 
@@ -50,12 +49,7 @@ def build_evidence_pack(
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "mode": mode,
         "run_id": run_id,
-        "verified": {
-            "routes": _extract_verified_by_section(verified_claims, "routes"),
-            "dependencies": _extract_verified_by_section(verified_claims, "dependencies"),
-            "schemas": _extract_verified_by_section(verified_claims, "schemas"),
-            "enforcement": _extract_verified_by_section(verified_claims, "enforcement"),
-        },
+        "verified": _group_by_section(verified_claims),
         "unknowns": known_unknowns,
         "metrics": {
             "dci": _compute_dci(howto, claims, known_unknowns, coverage),
@@ -107,20 +101,34 @@ def _get_claims_list(claims: Dict[str, Any]) -> List[Dict]:
     return []
 
 
+def _is_evidence_verified(ev: dict) -> bool:
+    """
+    An evidence anchor is verified if EITHER:
+      - snippet_hash_verified is True (line-level hash match), OR
+      - kind is file_exists and verified is True (file presence check)
+    Both are deterministic — neither requires LLM.
+    """
+    if not isinstance(ev, dict):
+        return False
+    if ev.get("snippet_hash_verified", False):
+        return True
+    if ev.get("kind") == "file_exists" and ev.get("verified", False):
+        return True
+    return False
+
+
 def _get_verified_claims(claims: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
-    Return only claims that have at least one evidence anchor with
-    snippet_hash_verified=True. This is the only way a claim enters
-    the EvidencePack's verified sections.
+    Return only claims that have at least one deterministically verified
+    evidence anchor. This is the only way a claim enters the EvidencePack's
+    verified section.
     """
     result = []
     for claim in _get_claims_list(claims):
-        verified_evidence = []
-        for ev in claim.get("evidence", []):
-            if isinstance(ev, dict) and ev.get("snippet_hash_verified", False):
-                verified_evidence.append(ev)
+        verified_evidence = [ev for ev in claim.get("evidence", []) if _is_evidence_verified(ev)]
         if verified_evidence:
             result.append({
+                "id": claim.get("id", ""),
                 "statement": claim.get("statement", ""),
                 "section": claim.get("section", ""),
                 "evidence": verified_evidence,
@@ -129,17 +137,18 @@ def _get_verified_claims(claims: Dict[str, Any]) -> List[Dict[str, Any]]:
     return result
 
 
-def _extract_verified_by_section(
-    verified_claims: List[Dict[str, Any]], section: str
-) -> List[Dict[str, Any]]:
+def _group_by_section(verified_claims: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
     """
-    Filter verified claims by their declared section (as set by the extractor).
-    Only uses the section field, never keyword matching on statement text.
+    Group verified claims by their extractor-assigned section.
+    No reclassification — sections are used as-is from the extractor.
     """
-    return [
-        c for c in verified_claims
-        if c.get("section", "").lower() == section.lower()
-    ]
+    groups: Dict[str, List[Dict[str, Any]]] = {}
+    for claim in verified_claims:
+        section = claim.get("section", "uncategorized")
+        if section not in groups:
+            groups[section] = []
+        groups[section].append(claim)
+    return groups
 
 
 def _compute_dci(
@@ -154,7 +163,7 @@ def _compute_dci(
     Lower DCI = lower visibility, NOT insecure.
 
     Straight average across coverage classes:
-      - claims_coverage: ratio of evidenced claims (snippet_hash_verified)
+      - claims_coverage: ratio of claims with verified evidence
       - unknowns_coverage: ratio of VERIFIED unknown categories
       - howto_completeness: from existing completeness score
     """

@@ -6,11 +6,9 @@ Compares two EvidencePack v1 files and produces:
   - DIFF_REPORT.md (human-readable)
 
 Only deterministic comparison signals are allowed:
-  - Route add/remove
-  - Dependency add/remove/version change
-  - Snippet hash changes
-  - Enforcement evidence hash delta
-  - Unknown category delta
+  - Claim add/remove per section
+  - Snippet hash changes within claims
+  - Unknown category status delta
   - DCI delta
 
 NOT allowed:
@@ -21,14 +19,24 @@ NOT allowed:
 
 import json
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Set
+from typing import Dict, Any, List, Set
 
 
 def diff_packs(pack_a: Dict[str, Any], pack_b: Dict[str, Any]) -> Dict[str, Any]:
     """
     Deterministic comparison of two EvidencePack v1 structures.
-    Returns a diff object with added/removed/changed items per category.
+    Returns a diff object with added/removed/changed items per section.
     """
+    verified_a = pack_a.get("verified", {})
+    verified_b = pack_b.get("verified", {})
+    all_sections = sorted(set(list(verified_a.keys()) + list(verified_b.keys())))
+
+    sections_diff = {}
+    for section in all_sections:
+        items_a = verified_a.get(section, []) if isinstance(verified_a.get(section), list) else []
+        items_b = verified_b.get(section, []) if isinstance(verified_b.get(section), list) else []
+        sections_diff[section] = _diff_verified_items(items_a, items_b)
+
     diff: Dict[str, Any] = {
         "diff_version": "1.0",
         "pack_a": {
@@ -39,22 +47,7 @@ def diff_packs(pack_a: Dict[str, Any], pack_b: Dict[str, Any]) -> Dict[str, Any]
             "run_id": pack_b.get("run_id"),
             "generated_at": pack_b.get("generated_at"),
         },
-        "routes": _diff_verified_items(
-            pack_a.get("verified", {}).get("routes", []),
-            pack_b.get("verified", {}).get("routes", []),
-        ),
-        "dependencies": _diff_verified_items(
-            pack_a.get("verified", {}).get("dependencies", []),
-            pack_b.get("verified", {}).get("dependencies", []),
-        ),
-        "schemas": _diff_verified_items(
-            pack_a.get("verified", {}).get("schemas", []),
-            pack_b.get("verified", {}).get("schemas", []),
-        ),
-        "enforcement": _diff_verified_items(
-            pack_a.get("verified", {}).get("enforcement", []),
-            pack_b.get("verified", {}).get("enforcement", []),
-        ),
+        "verified_sections": sections_diff,
         "unknowns": _diff_unknowns(
             pack_a.get("unknowns", []),
             pack_b.get("unknowns", []),
@@ -87,26 +80,26 @@ def save_diff(diff: Dict[str, Any], output_dir: Path) -> tuple:
 
 
 def _diff_verified_items(items_a: List[Dict], items_b: List[Dict]) -> Dict[str, Any]:
-    descs_a = {item.get("description", ""): item for item in items_a}
-    descs_b = {item.get("description", ""): item for item in items_b}
+    key_a = {item.get("statement", item.get("description", "")): item for item in items_a}
+    key_b = {item.get("statement", item.get("description", "")): item for item in items_b}
 
-    keys_a = set(descs_a.keys())
-    keys_b = set(descs_b.keys())
+    keys_a = set(key_a.keys())
+    keys_b = set(key_b.keys())
 
-    added = [descs_b[k] for k in (keys_b - keys_a)]
-    removed = [descs_a[k] for k in (keys_a - keys_b)]
+    added = [key_b[k] for k in sorted(keys_b - keys_a)]
+    removed = [key_a[k] for k in sorted(keys_a - keys_b)]
 
     changed = []
-    for k in (keys_a & keys_b):
-        a_hashes = _extract_hashes_from_item(descs_a[k])
-        b_hashes = _extract_hashes_from_item(descs_b[k])
+    for k in sorted(keys_a & keys_b):
+        a_hashes = _extract_hashes_from_item(key_a[k])
+        b_hashes = _extract_hashes_from_item(key_b[k])
         if a_hashes != b_hashes:
             changed.append({
-                "description": k,
+                "statement": k,
                 "old_hashes": sorted(a_hashes),
                 "new_hashes": sorted(b_hashes),
                 "confidence_delta": round(
-                    descs_b[k].get("confidence", 0) - descs_a[k].get("confidence", 0), 4
+                    key_b[k].get("confidence", 0) - key_a[k].get("confidence", 0), 4
                 ),
             })
 
@@ -123,7 +116,7 @@ def _diff_unknowns(unknowns_a: List[Dict], unknowns_b: List[Dict]) -> Dict[str, 
     cats_b = {u.get("category", ""): u for u in unknowns_b}
 
     status_changes = []
-    for cat in set(list(cats_a.keys()) + list(cats_b.keys())):
+    for cat in sorted(set(list(cats_a.keys()) + list(cats_b.keys()))):
         a_status = cats_a.get(cat, {}).get("status", "MISSING")
         b_status = cats_b.get(cat, {}).get("status", "MISSING")
         if a_status != b_status:
@@ -160,7 +153,7 @@ def _diff_dci(dci_a: Dict[str, Any], dci_b: Dict[str, Any]) -> Dict[str, Any]:
     components_b = dci_b.get("components", {})
 
     component_deltas = {}
-    all_keys = set(list(components_a.keys()) + list(components_b.keys()))
+    all_keys = sorted(set(list(components_a.keys()) + list(components_b.keys())))
     for k in all_keys:
         va = components_a.get(k, 0)
         vb = components_b.get(k, 0)
@@ -208,30 +201,31 @@ def render_diff_report(diff: Dict[str, Any]) -> str:
         lines.append(f"  - {k}: {v:+.2%}")
     lines.append("")
 
-    for section_name in ["routes", "dependencies", "schemas", "enforcement"]:
-        section = diff.get(section_name, {})
-        lines.append(f"## {section_name.title()} ({section.get('summary', '')})")
+    sections_diff = diff.get("verified_sections", {})
+    for section_name in sorted(sections_diff.keys()):
+        section = sections_diff[section_name]
+        lines.append(f"## {section_name} ({section.get('summary', '')})")
         lines.append("")
 
         added = section.get("added", [])
         if added:
             lines.append("**Added:**")
             for item in added:
-                lines.append(f"- {item.get('description', '?')}")
+                lines.append(f"- {item.get('statement', item.get('description', '?'))}")
             lines.append("")
 
         removed = section.get("removed", [])
         if removed:
             lines.append("**Removed:**")
             for item in removed:
-                lines.append(f"- {item.get('description', '?')}")
+                lines.append(f"- {item.get('statement', item.get('description', '?'))}")
             lines.append("")
 
         changed = section.get("changed", [])
         if changed:
             lines.append("**Changed (evidence hash delta):**")
             for item in changed:
-                lines.append(f"- {item.get('description', '?')} (confidence delta: {item.get('confidence_delta', 0):+.0%})")
+                lines.append(f"- {item.get('statement', '?')} (confidence delta: {item.get('confidence_delta', 0):+.0%})")
             lines.append("")
 
         if not added and not removed and not changed:
