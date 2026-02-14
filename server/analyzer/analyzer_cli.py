@@ -10,24 +10,25 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
 
 from analyzer import Analyzer
 
-app = typer.Typer()
+app = typer.Typer(help="Program Totality Analyzer - Generate comprehensive technical dossiers for software projects.")
+
 
 @app.command()
 def analyze(
     target: Optional[str] = typer.Argument(None, help="GitHub URL or local path to analyze"),
-    output_dir: str = typer.Option(..., "--output-dir", "-o"),
+    output_dir: str = typer.Option(..., "--output-dir", "-o", help="Directory to write output files"),
     replit: bool = typer.Option(False, "--replit", help="Analyze current Replit workspace"),
 ):
     """
     Analyze a software project and generate a dossier.
-    
+
     Supports three modes:
     - GitHub repo: analyze https://github.com/user/repo -o ./out
     - Local folder: analyze ./some-folder -o ./out
     - Replit workspace: analyze --replit -o ./out
     """
     console = Analyzer.get_console()
-    
+
     if replit:
         mode = "replit"
         source = os.getcwd()
@@ -42,8 +43,8 @@ def analyze(
         console.print(f"[bold green]Local mode:[/bold green] Analyzing {source}")
     else:
         console.print("[bold red]Error:[/bold red] Provide a GitHub URL, local path, or use --replit")
-        sys.exit(1)
-    
+        raise typer.Exit(code=1)
+
     try:
         analyzer = Analyzer(source, output_dir, mode=mode)
         asyncio.run(analyzer.run())
@@ -52,7 +53,8 @@ def analyze(
         console.print(f"[bold red]Error during analysis:[/bold red] {str(e)}")
         import traceback
         traceback.print_exc()
-        sys.exit(1)
+        raise typer.Exit(code=1)
+
 
 if __name__ == "__main__":
     app()
