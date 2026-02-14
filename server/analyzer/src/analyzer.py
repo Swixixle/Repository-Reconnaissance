@@ -99,7 +99,7 @@ class Analyzer:
             howto = self._build_deterministic_howto()
             howto["completeness"] = self._compute_completeness(howto)
             dossier = self._build_deterministic_dossier(howto)
-            claims = {"claims": [], "mode": self.mode, "run_id": self.acquire_result.run_id, "is_replit": bool(self.replit_profile and self.replit_profile.get("is_replit")), "note": "No claims in --no-llm mode"}
+            claims = self._build_deterministic_claims(howto, file_index)
         else:
             self.console.print("[bold]Step 4: Extracting how-to...[/bold]")
             howto = await self.extract_howto(packs)
@@ -729,6 +729,153 @@ RULES:
                 "run_id": self.acquire_result.run_id if self.acquire_result else None,
                 "is_replit": self.replit_profile is not None and self.replit_profile.get("is_replit", False),
             }
+
+    def _build_deterministic_claims(self, howto: dict, file_index: List[str]) -> dict:
+        claims = []
+        claim_id = 0
+
+        def _add(section: str, statement: str, confidence: float, evidence_list: list, status: str = "evidenced"):
+            nonlocal claim_id
+            claim_id += 1
+            cid = f"claim_{claim_id:03d}"
+            verified_ev = []
+            for ev in evidence_list:
+                if isinstance(ev, dict) and ev.get("snippet_hash"):
+                    v = dict(ev)
+                    v["snippet_hash_verified"] = self._verify_single_evidence(ev)
+                    if not v["snippet_hash_verified"]:
+                        confidence = min(confidence, 0.20)
+                        status = "unverified"
+                    verified_ev.append(v)
+            if not verified_ev:
+                confidence = min(confidence, 0.20)
+                if status == "evidenced":
+                    status = "inferred"
+            claims.append({
+                "id": cid,
+                "section": section,
+                "statement": statement,
+                "confidence": round(confidence, 2),
+                "evidence": verified_ev,
+                "status": status,
+            })
+
+        pkg_json = self.repo_dir / "package.json"
+        if pkg_json.exists():
+            try:
+                pkg_lines = pkg_json.read_text(errors="ignore").splitlines()
+                pkg = json.loads("\n".join(pkg_lines))
+                name = pkg.get("name", "")
+                if name:
+                    ln = self._find_line(pkg_json, '"name"')
+                    ev = make_evidence_from_line("package.json", ln, pkg_lines[ln - 1].strip()) if ln else None
+                    _add("What the Target System Is", f"The project is named \"{name}\" (from package.json)", 0.60, [ev] if ev else [])
+                desc = pkg.get("description", "")
+                if desc:
+                    ln = self._find_line(pkg_json, '"description"')
+                    ev = make_evidence_from_line("package.json", ln, pkg_lines[ln - 1].strip()) if ln else None
+                    _add("What the Target System Is", f"Project description: \"{desc}\"", 0.50, [ev] if ev else [])
+                scripts = pkg.get("scripts", {})
+                if scripts:
+                    for sname in ["dev", "build", "start", "test"]:
+                        if sname in scripts:
+                            ln = self._find_line(pkg_json, f'"{sname}"')
+                            ev = make_evidence_from_line("package.json", ln, pkg_lines[ln - 1].strip()) if ln else None
+                            _add("How to Use the Target System", f"npm script \"{sname}\" runs: {scripts[sname]}", 0.60, [ev] if ev else [])
+                deps = pkg.get("dependencies", {})
+                key_deps = [d for d in deps if d in ("express", "fastify", "next", "react", "vue", "angular", "drizzle-orm", "prisma", "sequelize", "mongoose", "openai")]
+                if key_deps:
+                    ln = self._find_line(pkg_json, '"dependencies"')
+                    ev = make_evidence_from_line("package.json", ln, pkg_lines[ln - 1].strip()) if ln else None
+                    _add("Integration Surface", f"Key dependencies: {', '.join(key_deps)}", 0.50, [ev] if ev else [])
+            except (json.JSONDecodeError, Exception):
+                pass
+
+        pyproject = self.repo_dir / "pyproject.toml"
+        if pyproject.exists():
+            try:
+                lines = pyproject.read_text(errors="ignore").splitlines()
+                for i, line in enumerate(lines):
+                    if "name" in line and "=" in line and i < 20:
+                        ev = make_evidence_from_line("pyproject.toml", i + 1, line.strip())
+                        name_val = line.split("=", 1)[1].strip().strip('"').strip("'")
+                        _add("What the Target System Is", f"Python project named \"{name_val}\" (from pyproject.toml)", 0.50, [ev])
+                        break
+            except Exception:
+                pass
+
+        if self.replit_profile:
+            rp = self.replit_profile
+            pb = rp.get("port_binding", {})
+            if isinstance(pb, dict) and pb.get("evidence"):
+                ev_list = pb["evidence"] if isinstance(pb["evidence"], list) else []
+                if pb.get("binds_all_interfaces"):
+                    _add("How to Use the Target System", "Server binds to 0.0.0.0 (all interfaces)", 0.55, ev_list)
+                if pb.get("uses_env_port"):
+                    _add("How to Use the Target System", "Server port is configured via environment variable", 0.55, ev_list)
+
+            secrets = rp.get("required_secrets", [])
+            if secrets:
+                secret_names = [s["name"] for s in secrets]
+                first_ev = []
+                for s in secrets:
+                    refs = s.get("referenced_in", [])
+                    if refs:
+                        first_ev.append(refs[0])
+                _add("Data & Security Posture", f"System requires {len(secrets)} secret(s): {', '.join(secret_names)}", 0.55, first_ev)
+                for s in secrets:
+                    refs = s.get("referenced_in", [])
+                    name = s["name"]
+                    _add("Data & Security Posture", f"Secret \"{name}\" is referenced in {len(refs)} file(s)", 0.50, refs[:2])
+
+            apis = rp.get("external_apis", [])
+            for api in apis:
+                api_name = api.get("api", "unknown")
+                api_ev = api.get("evidence_files", [])[:2]
+                _add("Integration Surface", f"External API dependency: {api_name}", 0.45, api_ev)
+
+            if rp.get("run_command"):
+                replit_ev = rp.get("replit_file_parsed", {}).get("evidence", [])
+                _add("How to Use the Target System", f"Replit run command: {rp['run_command']}", 0.55, replit_ev if isinstance(replit_ev, list) else [])
+
+        ts_count = sum(1 for f in file_index if f.endswith((".ts", ".tsx")))
+        js_count = sum(1 for f in file_index if f.endswith((".js", ".jsx")))
+        py_count = sum(1 for f in file_index if f.endswith(".py"))
+        langs = []
+        if ts_count > 0:
+            langs.append(f"TypeScript ({ts_count} files)")
+        if js_count > 0:
+            langs.append(f"JavaScript ({js_count} files)")
+        if py_count > 0:
+            langs.append(f"Python ({py_count} files)")
+        if langs:
+            _add("What the Target System Is", f"Primary languages: {', '.join(langs)}", 0.40, [], "inferred")
+
+        has_server_dir = any(f.startswith("server/") or f.startswith("server\\") for f in file_index)
+        has_client_dir = any(f.startswith("client/") or f.startswith("client\\") for f in file_index)
+        if has_server_dir and has_client_dir:
+            _add("What the Target System Is", "Project has both client/ and server/ directories (full-stack structure)", 0.40, [], "inferred")
+
+        db_files = [f for f in file_index if any(kw in f.lower() for kw in ["schema", "migration", "drizzle", "prisma", "db."])]
+        if db_files:
+            db_ev = []
+            for df in db_files[:2]:
+                ln = 1
+                try:
+                    first_line = (self.repo_dir / df).read_text(errors="ignore").splitlines()[0].strip()
+                    db_ev.append(make_evidence_from_line(df, 1, first_line))
+                except Exception:
+                    pass
+            _add("Integration Surface", f"Database schema/migration files detected: {', '.join(db_files[:3])}", 0.40, db_ev)
+
+        claims = claims[:30]
+
+        return {
+            "claims": claims,
+            "mode": self.mode,
+            "run_id": self.acquire_result.run_id if self.acquire_result else None,
+            "is_replit": self.replit_profile is not None and self.replit_profile.get("is_replit", False),
+        }
 
     def _build_deterministic_howto(self) -> dict:
         howto: Dict[str, Any] = {
