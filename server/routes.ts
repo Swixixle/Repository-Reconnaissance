@@ -94,7 +94,7 @@ async function runAnalysis(projectId: number, source: string, mode: string) {
 
   const analyzerPath = path.resolve(process.cwd(), "server/analyzer/analyzer_cli.py");
 
-  const args = [analyzerPath];
+  const args = [analyzerPath, "analyze"];
 
   if (mode === "replit") {
     args.push("--replit");

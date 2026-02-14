@@ -10,10 +10,21 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
 
 from analyzer import Analyzer
 
-app = typer.Typer(help="Program Totality Analyzer - Generate comprehensive technical dossiers for software projects.")
+app = typer.Typer(
+    help="Program Totality Analyzer - Generate comprehensive technical dossiers for software projects.",
+    add_completion=False,
+)
 
 
-@app.command()
+@app.callback(invoke_without_command=True)
+def main(ctx: typer.Context):
+    """Program Totality Analyzer CLI."""
+    if ctx.invoked_subcommand is None:
+        typer.echo(ctx.get_help())
+        raise typer.Exit(0)
+
+
+@app.command("analyze")
 def analyze(
     target: Optional[str] = typer.Argument(None, help="GitHub URL or local path to analyze"),
     output_dir: str = typer.Option(..., "--output-dir", "-o", help="Directory to write output files"),
