@@ -1,7 +1,7 @@
 [project]
-name = "repl-nix-workspace"
+name = "program-totality-analyzer"
 version = "0.1.0"
-description = "Add your description here"
+description = "Evidence-bound static analysis tool that generates comprehensive technical dossiers for software projects"
 requires-python = ">=3.11"
 dependencies = [
     "gitpython>=3.1.46",
@@ -12,3 +12,6 @@ dependencies = [
     "rich>=14.3.2",
     "typer>=0.23.1",
 ]
+
+[project.scripts]
+pta = "server.analyzer.analyzer_cli:app"

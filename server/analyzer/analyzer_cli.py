@@ -1,12 +1,12 @@
 import typer
 import sys
 import os
-import json
 import asyncio
 from typing import Optional
-from pathlib import Path
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
+_src_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "src")
+if _src_dir not in sys.path:
+    sys.path.insert(0, _src_dir)
 
 from analyzer import Analyzer
 

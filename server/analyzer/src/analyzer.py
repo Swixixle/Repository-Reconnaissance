@@ -9,9 +9,14 @@ from rich.console import Console
 import openai
 from dotenv import load_dotenv
 
-from core.acquire import acquire_target, AcquireResult
-from core.replit_profile import ReplitProfiler
-from core.evidence import make_evidence, make_evidence_from_line, make_file_exists_evidence, validate_evidence_list
+try:
+    from .core.acquire import acquire_target, AcquireResult
+    from .core.replit_profile import ReplitProfiler
+    from .core.evidence import make_evidence, make_evidence_from_line, make_file_exists_evidence, validate_evidence_list
+except ImportError:
+    from core.acquire import acquire_target, AcquireResult
+    from core.replit_profile import ReplitProfiler
+    from core.evidence import make_evidence, make_evidence_from_line, make_file_exists_evidence, validate_evidence_list
 
 load_dotenv()
 
