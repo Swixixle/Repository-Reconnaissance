@@ -1,10 +1,11 @@
 import os
+import re
 import shutil
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
-from git import Repo
+from git import Repo, GitCommandError
 
 
 @dataclass
@@ -13,6 +14,13 @@ class AcquireResult:
     mode: str
     source_ref: str
     run_id: str
+
+
+def _inject_token_into_url(url: str, token: str) -> str:
+    m = re.match(r"https://([^/]+)/(.*)", url)
+    if m:
+        return f"https://x-access-token:{token}@{m.group(1)}/{m.group(2)}"
+    return url
 
 
 def acquire_target(
@@ -38,12 +46,27 @@ def acquire_target(
         or target.startswith("https://")
         or target.startswith("git@")
     ):
-        if "github.com" not in target and "gitlab.com" not in target:
-            pass
         repo_dir = output_dir / "repo"
         if repo_dir.exists():
             shutil.rmtree(repo_dir)
-        Repo.clone_from(target, repo_dir)
+
+        clone_url = target
+        gh_token = os.environ.get("GITHUB_TOKEN", "")
+        if gh_token and "github.com" in target:
+            clone_url = _inject_token_into_url(target, gh_token)
+
+        try:
+            Repo.clone_from(clone_url, repo_dir)
+        except GitCommandError as e:
+            stderr_msg = str(e)
+            if "Authentication failed" in stderr_msg or "Invalid username" in stderr_msg:
+                raise RuntimeError(
+                    f"Git clone failed: authentication error for {target}. "
+                    "If this is a private repository, set the GITHUB_TOKEN secret "
+                    "to a GitHub personal access token with 'repo' scope."
+                ) from e
+            raise
+
         return AcquireResult(
             root_path=repo_dir,
             mode="github",
