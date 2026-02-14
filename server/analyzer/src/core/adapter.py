@@ -19,8 +19,48 @@ from datetime import datetime, timezone
 
 from .verify_policy import is_verified_claim, get_verified_evidence
 
+try:
+    from .. import __version__ as TOOL_VERSION
+except Exception:
+    TOOL_VERSION = "unknown"
+
 
 EVIDENCE_PACK_VERSION = "1.0"
+
+REQUIRED_PACK_FIELDS = {
+    "evidence_pack_version",
+    "tool_version",
+    "generated_at",
+    "mode",
+    "run_id",
+    "verified",
+    "verified_structural",
+    "unknowns",
+    "metrics",
+    "hashes",
+    "summary",
+    "coverage",
+}
+
+
+def validate_evidence_pack(pack: Dict[str, Any]) -> List[str]:
+    errors = []
+    for field in REQUIRED_PACK_FIELDS:
+        if field not in pack:
+            errors.append(f"missing required field: {field}")
+    if "evidence_pack_version" in pack and pack["evidence_pack_version"] != EVIDENCE_PACK_VERSION:
+        errors.append(f"unsupported schema version: {pack['evidence_pack_version']} (expected {EVIDENCE_PACK_VERSION})")
+    if "tool_version" in pack and not pack["tool_version"]:
+        errors.append("tool_version is empty")
+    if "run_id" in pack and not pack["run_id"]:
+        errors.append("run_id is empty")
+    coverage = pack.get("coverage", {})
+    if isinstance(coverage, dict):
+        if "analyzed_files" not in coverage:
+            errors.append("coverage missing analyzed_files")
+        if "total_files_seen" not in coverage:
+            errors.append("coverage missing total_files_seen")
+    return errors
 
 
 def build_evidence_pack(
@@ -32,6 +72,9 @@ def build_evidence_pack(
     replit_profile: Optional[Dict[str, Any]] = None,
     mode: str = "github",
     run_id: Optional[str] = None,
+    skipped_files: int = 0,
+    skipped_types: Optional[List[str]] = None,
+    timeouts: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     """
     Build an EvidencePack v1 from existing analyzer outputs.
@@ -43,8 +86,11 @@ def build_evidence_pack(
     """
     verified_claims = _get_verified_claims(claims)
 
+    total_files_seen = len(file_index) + skipped_files
+
     pack: Dict[str, Any] = {
         "evidence_pack_version": EVIDENCE_PACK_VERSION,
+        "tool_version": TOOL_VERSION,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "mode": mode,
         "run_id": run_id,
@@ -68,6 +114,14 @@ def build_evidence_pack(
                 if u.get("status") == "VERIFIED"
             ]),
         },
+        "coverage": {
+            "analyzed_files": len(file_index),
+            "total_files_seen": total_files_seen,
+            "skipped_files": skipped_files,
+            "skipped_types": skipped_types or [],
+            "timeouts": timeouts or [],
+            "partial": skipped_files > 0 or bool(timeouts),
+        },
     }
 
     if replit_profile:
@@ -82,6 +136,12 @@ def build_evidence_pack(
 
 
 def save_evidence_pack(pack: Dict[str, Any], output_dir: Path) -> Path:
+    errors = validate_evidence_pack(pack)
+    if errors:
+        raise RuntimeError(
+            f"EvidencePack v1 schema validation failed ({len(errors)} error(s)):\n"
+            + "\n".join(f"  - {e}" for e in errors)
+        )
     path = output_dir / "evidence_pack.v1.json"
     with open(path, "w") as f:
         json.dump(pack, f, indent=2, default=str)

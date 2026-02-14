@@ -167,6 +167,7 @@ class Analyzer:
             replit_profile=self.replit_profile,
             mode=self.mode,
             run_id=self.acquire_result.run_id if self.acquire_result else None,
+            skipped_files=self._skipped_count,
         )
         pack_path = save_evidence_pack(evidence_pack, self.output_dir)
         assert_pack_written(pack_path)

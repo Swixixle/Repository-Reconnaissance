@@ -1,8 +1,9 @@
 {
   "evidence_pack_version": "1.0",
-  "generated_at": "2026-02-14T16:57:59.882665+00:00",
+  "tool_version": "0.1.0",
+  "generated_at": "2026-02-14T18:35:54.657851+00:00",
   "mode": "replit",
-  "run_id": "e251cebc9fc4",
+  "run_id": "b2a43be68a0e",
   "verified": {
     "What the Target System Is": [
       {
@@ -470,25 +471,24 @@
     ]
   },
   "summary": {
-    "total_files": 140,
+    "total_files": 142,
     "total_claims": 17,
     "verified_claims": 15,
     "unknown_categories": 9,
     "verified_categories": 0
+  },
+  "coverage": {
+    "analyzed_files": 142,
+    "total_files_seen": 166,
+    "skipped_files": 24,
+    "skipped_types": [],
+    "timeouts": [],
+    "partial": true
   },
   "replit_profile": {
     "is_replit": true,
     "run_command": "npm run dev",
     "language": "nodejs",
     "port": null
-  },
-  "tool_version": "0.1.0",
-  "coverage": {
-    "analyzed_files": 140,
-    "total_files_seen": 140,
-    "skipped_files": 0,
-    "skipped_types": [],
-    "timeouts": [],
-    "partial": false
   }
 }

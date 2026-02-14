@@ -59,9 +59,15 @@ class TestContractAuditBlock(unittest.TestCase):
 
     def test_snapshot_table_present(self):
         self.assertIn("| Measure | Value |", self.md)
-        self.assertIn("Files Indexed", self.md)
+        self.assertIn("Files Analyzed", self.md)
+        self.assertIn("Files Seen", self.md)
+        self.assertIn("Files Skipped", self.md)
         self.assertIn("Claims Extracted", self.md)
         self.assertIn("Claims with Deterministic Evidence", self.md)
+        self.assertIn("Partial Coverage", self.md)
+
+    def test_tool_version_in_header(self):
+        self.assertIn("**Tool Version:**", self.md)
 
     def test_run_id_in_audit_heading(self):
         run_id = self.pack.get("run_id", "")

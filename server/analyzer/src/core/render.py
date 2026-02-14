@@ -90,6 +90,7 @@ def _render_engineer(pack: Dict[str, Any]) -> str:
         f"# Program Totality Report — Engineer View",
         f"",
         f"**EvidencePack Version:** {pack.get('evidence_pack_version', '?')}",
+        f"**Tool Version:** {pack.get('tool_version', '?')}",
         f"**Generated:** {pack.get('generated_at', '?')}",
         f"**Mode:** {pack.get('mode', '?')}",
         f"**Run ID:** {pack.get('run_id', '?')}",
@@ -106,15 +107,20 @@ def _render_engineer(pack: Dict[str, Any]) -> str:
 
     lines.append(f"## PTA Contract Audit — Run {pack.get('run_id', '?')}")
     lines.append("")
+    cov = pack.get("coverage", {})
+
     lines.append("### 1. System Snapshot")
     lines.append("")
     lines.append(f"| Measure | Value |")
     lines.append(f"|---------|-------|")
-    lines.append(f"| Files Indexed | {summary.get('total_files', 0)} |")
+    lines.append(f"| Files Analyzed | {cov.get('analyzed_files', summary.get('total_files', 0))} |")
+    lines.append(f"| Files Seen (incl. skipped) | {cov.get('total_files_seen', summary.get('total_files', 0))} |")
+    lines.append(f"| Files Skipped | {cov.get('skipped_files', 0)} |")
     lines.append(f"| Claims Extracted | {summary.get('total_claims', 0)} |")
     lines.append(f"| Claims with Deterministic Evidence | {summary.get('verified_claims', 0)} |")
     lines.append(f"| Unknown Governance Categories | {summary.get('unknown_categories', 0)} |")
     lines.append(f"| Verified Structural Categories | {summary.get('verified_categories', 0)} |")
+    lines.append(f"| Partial Coverage | {'Yes' if cov.get('partial', False) else 'No'} |")
     lines.append("")
 
     lines.append("### 2. Deterministic Coverage Index (DCI v1)")
