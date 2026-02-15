@@ -9,6 +9,7 @@ export interface IStorage {
   createAnalysis(analysis: InsertAnalysis): Promise<Analysis>;
   getAnalysisByProjectId(projectId: number): Promise<Analysis | undefined>;
   updateProjectStatus(id: number, status: string): Promise<Project>;
+  resetAnalyzerLogbook(): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -39,6 +40,11 @@ export class DatabaseStorage implements IStorage {
   async updateProjectStatus(id: number, status: string): Promise<Project> {
     const [project] = await db.update(projects).set({ status }).where(eq(projects.id, id)).returning();
     return project;
+  }
+
+  async resetAnalyzerLogbook(): Promise<void> {
+    await db.delete(analyses);
+    await db.delete(projects);
   }
 }
 

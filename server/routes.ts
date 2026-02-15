@@ -94,6 +94,23 @@ export async function registerRoutes(
     res.type("text/markdown").send(readFileSync(p, "utf8"));
   });
 
+  app.post("/api/admin/reset-analyzer", async (req, res) => {
+    if (process.env.NODE_ENV === "production") {
+      res.status(403).json({ message: "Not available in production" });
+      return;
+    }
+    try {
+      await storage.resetAnalyzerLogbook();
+      await fs.rm(path.resolve(process.cwd(), "out"), { recursive: true, force: true });
+      await fs.mkdir(path.resolve(process.cwd(), "out"), { recursive: true });
+      console.log("[Admin] Analyzer logbook reset");
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("[Admin] Reset failed:", err);
+      res.status(500).json({ message: "Reset failed" });
+    }
+  });
+
   return httpServer;
 }
 
@@ -129,7 +146,11 @@ async function runAnalysis(projectId: number, source: string, mode: string) {
     env: { ...process.env },
   });
 
+  let finished = false;
+
   const timeout = setTimeout(async () => {
+    if (finished) return;
+    finished = true;
     console.error(`[Analyzer ${projectId}] Timeout after 10 minutes — killing`);
     pythonProcess.kill("SIGKILL");
     await storage.updateProjectStatus(projectId, "failed");
@@ -149,12 +170,16 @@ async function runAnalysis(projectId: number, source: string, mode: string) {
   });
 
   pythonProcess.on("error", async (err) => {
+    if (finished) return;
+    finished = true;
     clearTimeout(timeout);
     console.error(`[Analyzer ${projectId}] Spawn error:`, err);
     await storage.updateProjectStatus(projectId, "failed");
   });
 
   pythonProcess.on("close", async (code) => {
+    if (finished) return;
+    finished = true;
     clearTimeout(timeout);
     console.log(`[Analyzer ${projectId}] Exited code=${code}`);
 
