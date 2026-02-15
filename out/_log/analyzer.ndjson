@@ -33,3 +33,5 @@
 {"ts":"2026-02-15T12:15:48.534Z","projectId":40,"event":"spawn","cmd":"/home/runner/workspace/.pythonlibs/bin/python3 -m server.analyzer.analyzer_cli analyze --replit --output-dir /home/runner/workspace/out/40"}
 {"ts":"2026-02-15T12:17:57.376Z","projectId":40,"event":"exit","code":0}
 {"ts":"2026-02-15T12:17:57.497Z","projectId":40,"event":"finalize","status":"completed","durationMs":128973}
+{"ts":"2026-02-15T12:29:21.407Z","projectId":41,"event":"start","mode":"github","source":"https://github.com/Swixixle/ELI"}
+{"ts":"2026-02-15T12:29:21.415Z","projectId":41,"event":"spawn","cmd":"/home/runner/workspace/.pythonlibs/bin/python3 -m server.analyzer.analyzer_cli analyze https://github.com/Swixixle/ELI --output-dir /home/runner/workspace/out/41"}
