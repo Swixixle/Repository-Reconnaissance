@@ -12,6 +12,11 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  app.get("/health", async (_req, res) => {
+    const dbOk = await storage.getProjects().then(() => true).catch(() => false);
+    res.json({ ok: true, db: dbOk, uptime: process.uptime() });
+  });
+
   app.get(api.projects.list.path, async (_req, res) => {
     const projects = await storage.getProjects();
     res.json(projects);
