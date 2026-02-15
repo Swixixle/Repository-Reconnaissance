@@ -680,374 +680,152 @@ L5: ## 1. File Index Summary
 L6: - Files scanned: see index.json
 L7: - Self-skip: 26 analyzer files excluded
 L8: 
-L9: ## 2. Replit Execution Profile
-L10: - **Is Replit:** True
-L11: - **Run command:** `npm run dev`
-L12: - **Language:** nodejs
-L13: - **Port:** Uses PORT env var; actual port determined at runtime. In Replit, PORT is injected.
-L14: - **Secrets (3):** DATABASE_URL, AI_INTEGRATIONS_OPENAI_API_KEY, AI_INTEGRATIONS_OPENAI_BASE_URL
-L15: - **External APIs:** OpenAI
-L16: 
-L17: ## 3. Operator Manual (Deterministic)
-L18: ```json
-L19: {
-L20:   "prereqs": [
-L21:     "Node.js",
-L22:     "Python"
-L23:   ],
-L24:   "install_steps": [
-L25:     {
-L26:       "step": "Install Node dependencies",
-L27:       "command": "npm ci",
-L28:       "evidence": {
-L29:         "kind": "file_exists",
-L30:         "path": "package-lock.json",
-L31:         "snippet_hash": "053150b640a7",
-L32:         "display": "package-lock.json (file exists)"
-L33:       }
-L34:     },
-L35:     {
-L36:       "step": "Install Python dependencies",
-L37:       "command": "pip install .",
-L38:       "evidence": {
-L39:         "kind": "file_exists",
-L40:         "path": "pyproject.toml",
-L41:         "snippet_hash": "50c86b7ed8ac",
-L42:         "display": "pyproject.toml (file exists)"
-L43:       }
-L44:     }
-L45:   ],
-L46:   "config": [
-L47:     {
-L48:       "name": "DATABASE_URL",
-L49:       "purpose": "Secret referenced in code (see evidence)",
-L50:       "evidence": {
-L51:         "path": "drizzle.config.ts",
-L52:         "line_start": 3,
-L53:         "line_end": 3,
-L54:         "snippet_hash": "a19790628fbe",
-L55:         "display": "drizzle.config.ts:3"
-L56:       }
-L57:     },
-L58:     {
-L59:       "name": "AI_INTEGRATIONS_OPENAI_API_KEY",
-L60:       "purpose": "Secret referenced in code (see evidence)",
-L61:       "evidence": {
-L62:         "path": "server/replit_integrations/audio/client.ts",
-L63:         "line_start": 10,
-L64:         "line_end": 10,
-L65:         "snippet_hash": "05da5f1b1281",
-L66:         "display": "server/replit_integrations/audio/client.ts:10"
-L67:       }
-L68:     },
-L69:     {
-L70:       "name": "AI_INTEGRATIONS_OPENAI_BASE_URL",
-L71:       "purpose": "Secret referenced in code (see evidence)",
-L72:       "evidence": {
-L73:         "path": "server/replit_integrations/audio/client.ts",
-L74:         "line_start": 11,
-L75:         "line_end": 11,
-L76:         "snippet_hash": "1f70e6a77d42",
-L77:         "display": "server/replit_integrations/audio/client.ts:11"
-L78:       }
-L79:     }
-L80:   ],
-L81:   "run_dev": [
-L82:     {
-L83:       "step": "Start dev server",
-L84:       "command": "npm run dev",
-L85:       "evidence": {
-L86:         "path": "package.json",
-L87:         "line_start": 7,
-L88:         "line_end": 7,
-L89:         "snippet_hash": "fd240a9dc053",
-L90:         "display": "package.json:7"
-L91:       }
-L92:     }
-L93:   ],
-L94:   "run_prod": [
-L95:     {
-L96:       "step": "Build for production",
-L97:       "command": "npm run build",
-L98:       "evidence": {
-L99:         "path": "package.json",
-L100:         "line_start": 8,
-L101:         "line_end": 8,
-L102:         "snippet_hash": "79d8bdf275d6",
-L103:         "display": "package.json:8"
-L104:       }
-L105:     },
-L106:     {
-L107:       "step": "Start production",
-L108:       "command": "npm start",
-L109:       "evidence": {
-L110:         "path": "package.json",
-L111:         "line_start": 9,
-L112:         "line_end": 9,
-L113:         "snippet_hash": "020435ddf436",
-L114:         "display": "package.json:9"
-L115:       }
-L116:     }
-L117:   ],
-L118:   "usage_examples": [],
-L119:   "verification_steps": [],
-L120:   "common_failures": [],
-L121:   "unknowns": [
-L122:     {
-L123:       "what_is_missing": "Semantic analysis of code purpose and architecture",
-L124:       "why_it_matters": "Cannot determine system intent, integration patterns, or risk factors without LLM analysis",
-L125:       "what_evidence_needed": "Re-run without --no-llm flag for full analysis"
-L126:     }
-L127:   ],
-L128:   "missing_evidence_requests": [],
-L129:   "replit_execution_profile": {
-L130:     "run_command": "npm run dev",
-L131:     "language": "nodejs",
-L132:     "port_binding": {
-L133:       "port": null,
-L134:       "binds_all_interfaces": true,
-L135:       "uses_env_port": true,
-L136:       "evidence": [
-L137:         {
-L138:           "path": "server/index.ts",
-L139:           "line_start": 92,
-L140:           "line_end": 92,
-L141:           "snippet_hash": "75d345a78f84",
-L142:           "display": "server/index.ts:92"
-L143:         },
-L144:         {
-L145:           "path": "server/index.ts",
-L146:           "line_start": 96,
-L147:           "line_end": 96,
-L148:           "snippet_hash": "9b7206f3d09a",
-L149:           "display": "server/index.ts:96"
-L150:         }
-L151:       ]
-L152:     },
-L153:     "required_secrets": [
-L154:       {
-L155:         "name": "DATABASE_URL",
-L156:         "referenced_in": [
-L157:           {
-L158:             "path": "drizzle.config.ts",
-L159:             "line_start": 3,
-L160:             "line_end": 3,
-L161:             "snippet_hash": "a19790628fbe",
-L162:             "display": "drizzle.config.ts:3"
-L163:           },
-L164:           {
-L165:             "path": "drizzle.config.ts",
-L166:             "line_start": 12,
-L167:             "line_end": 12,
-L168:             "snippet_hash": "1005be19f14a",
-L169:             "display": "drizzle.config.ts:12"
-L170:           },
-L171:           {
-L172:             "path": "server/db.ts",
-L173:             "line_start": 7,
-L174:             "line_end": 7,
-L175:             "snippet_hash": "a19790628fbe",
-L176:             "display": "server/db.ts:7"
-L177:           },
-L178:           {
-L179:             "path": "server/db.ts",
-L180:             "line_start": 13,
-L181:             "line_end": 13,
-L182:             "snippet_hash": "111f33de9945",
-L183:             "display": "server/db.ts:13"
-L184:           }
-L185:         ]
-L186:       },
-L187:       {
-L188:         "name": "AI_INTEGRATIONS_OPENAI_API_KEY",
-L189:         "referenced_in": [
-L190:           {
-L191:             "path": "server/replit_integrations/audio/client.ts",
-L192:             "line_start": 10,
-L193:             "line_end": 10,
-L194:             "snippet_hash": "05da5f1b1281",
-L195:             "display": "server/replit_integrations/audio/client.ts:10"
-L196:           },
-L197:           {
-L198:             "path": "server/replit_integrations/chat/routes.ts",
-L199:             "line_start": 6,
-L200:             "line_end": 6,
-L201:             "snippet_hash": "05da5f1b1281",
-L202:             "display": "server/replit_integrations/chat/routes.ts:6"
-L203:           },
-L204:           {
-L205:             "path": "server/replit_integrations/image/client.ts",
-L206:             "line_start": 6,
-L207:             "line_end": 6,
-L208:             "snippet_hash": "05da5f1b1281",
-L209:             "display": "server/replit_integrations/image/client.ts:6"
-L210:           }
-L211:         ]
-L212:       },
-L213:       {
-L214:         "name": "AI_INTEGRATIONS_OPENAI_BASE_URL",
-L215:         "referenced_in": [
-L216:           {
-L217:             "path": "server/replit_integrations/audio/client.ts",
-L218:             "line_start": 11,
-L219:             "line_end": 11,
-L220:             "snippet_hash": "1f70e6a77d42",
-L221:             "display": "server/replit_integrations/audio/client.ts:11"
-L222:           },
-L223:           {
-L224:             "path": "server/replit_integrations/chat/routes.ts",
-L225:             "line_start": 7,
-L226:             "line_end": 7,
-L227:             "snippet_hash": "1f70e6a77d42",
-L228:             "display": "server/replit_integrations/chat/routes.ts:7"
-L229:           },
-L230:           {
-L231:             "path": "server/replit_integrations/image/client.ts",
-L232:             "line_start": 7,
-L233:             "line_end": 7,
-L234:             "snippet_hash": "1f70e6a77d42",
-L235:             "display": "server/replit_integrations/image/client.ts:7"
-L236:           }
-L237:         ]
-L238:       }
-L239:     ],
-L240:     "external_apis": [
-L241:       {
-L242:         "api": "OpenAI",
-L243:         "evidence_files": [
-L244:           {
-L245:             "path": "server/replit_integrations/audio/client.ts",
-L246:             "line_start": 1,
-L247:             "line_end": 1,
-L248:             "snippet_hash": "1d3dd608c3bb",
-L249:             "display": "server/replit_integrations/audio/client.ts:1"
-L250:           },
-L251:           {
-L252:             "path": "server/replit_integrations/audio/routes.ts",
-L253:             "line_start": 3,
-L254:             "line_end": 3,
-L255:             "snippet_hash": "2f87d29d3b03",
-L256:             "display": "server/replit_integrations/audio/routes.ts:3"
-L257:           },
-L258:           {
-L259:             "path": "server/replit_integrations/chat/routes.ts",
-L260:             "line_start": 2,
-L261:             "line_end": 2,
-L262:             "snippet_hash": "4db7290b0afd",
-L263:             "display": "server/replit_integrations/chat/routes.ts:2"
-L264:           },
-L265:           {
-L266:             "path": "server/replit_integrations/image/routes.ts",
-L267:             "line_start": 2,
-L268:             "line_end": 2,
-L269:             "snippet_hash": "7fd5b3abbeee",
-L270:             "display": "server/replit_integrations/image/routes.ts:2"
-L271:           },
-L272:           {
-L273:             "path": "server/replit_integrations/image/client.ts",
-L274:             "line_start": 2,
-L275:             "line_end": 2,
-L276:             "snippet_hash": "1d3dd608c3bb",
-L277:             "display": "server/replit_integrations/image/client.ts:2"
-L278:           }
-L279:         ]
-L280:       }
-L281:     ],
-L282:     "deployment_assumptions": [
-L283:       "Binds to 0.0.0.0 (all interfaces)",
-L284:       "No Dockerfile - depends on Replit runtime or manual setup",
-L285:       "Requires 3 secret(s): DATABASE_URL, AI_INTEGRATIONS_OPENAI_API_KEY, AI_INTEGRATIONS_OPENAI_BASE_URL"
-L286:     ],
-L287:     "observability": {
-L288:       "logging": true,
-L289:       "health_endpoint": true,
-L290:       "evidence": [
-L291:         {
-L292:           "path": "script/build.ts",
-L293:           "line_start": 38,
-L294:           "line_end": 38,
-L295:           "snippet_hash": "2f74cc3fdab1",
-L296:           "display": "script/build.ts:38"
-L297:         },
-L298:         {
-L299:           "path": "shared/schema.ts",
-L300:           "line_start": 10,
-L301:           "line_end": 10,
-L302:           "snippet_hash": "6ccc8e5d45a7",
-L303:           "display": "shared/schema.ts:10"
-L304:         }
-L305:       ]
-L306:     },
-L307:     "limitations": [
-L308:       "Deterministic mode (--no-llm): no semantic analysis performed"
-L309:     ]
-L310:   },
-L311:   "completeness": {
-L312:     "score": 62,
-L313:     "max": 100,
-L314:     "missing": [
-L315:       "verification_steps: no step with both a runnable command and verified evidence",
-L316:       "usage_examples: no examples with meaningful descriptions"
-L317:     ],
-L318:     "deductions": [
-L319:       "-3 for 1 unknown(s)"
-L320:     ],
-L321:     "notes": "-3 for 1 unknown(s); No Dockerfile found; 1 unknown(s) reported"
-L322:   }
-L323: }
-L324: ```
-L325: 
-L326: ## 4. Limitations
-L327: - This dossier was generated in `--no-llm` mode
-L328: - No semantic analysis, claims extraction, or architecture inference was performed
-L329: - For full analysis, re-run without `--no-llm`
+L9: ## 3. Operator Manual (Deterministic)
+L10: ```json
+L11: {
+L12:   "prereqs": [
+L13:     "Node.js",
+L14:     "Python"
+L15:   ],
+L16:   "install_steps": [
+L17:     {
+L18:       "step": "Install Node dependencies",
+L19:       "command": "npm ci",
+L20:       "evidence": {
+L21:         "kind": "file_exists",
+L22:         "path": "package-lock.json",
+L23:         "snippet_hash": "053150b640a7",
+L24:         "display": "package-lock.json (file exists)"
+L25:       }
+L26:     },
+L27:     {
+L28:       "step": "Install Python dependencies",
+L29:       "command": "pip install .",
+L30:       "evidence": {
+L31:         "kind": "file_exists",
+L32:         "path": "pyproject.toml",
+L33:         "snippet_hash": "50c86b7ed8ac",
+L34:         "display": "pyproject.toml (file exists)"
+L35:       }
+L36:     }
+L37:   ],
+L38:   "config": [],
+L39:   "run_dev": [
+L40:     {
+L41:       "step": "Start dev server",
+L42:       "command": "npm run dev",
+L43:       "evidence": {
+L44:         "path": "package.json",
+L45:         "line_start": 7,
+L46:         "line_end": 7,
+L47:         "snippet_hash": "fd240a9dc053",
+L48:         "display": "package.json:7"
+L49:       }
+L50:     }
+L51:   ],
+L52:   "run_prod": [
+L53:     {
+L54:       "step": "Build for production",
+L55:       "command": "npm run build",
+L56:       "evidence": {
+L57:         "path": "package.json",
+L58:         "line_start": 8,
+L59:         "line_end": 8,
+L60:         "snippet_hash": "79d8bdf275d6",
+L61:         "display": "package.json:8"
+L62:       }
+L63:     },
+L64:     {
+L65:       "step": "Start production",
+L66:       "command": "npm start",
+L67:       "evidence": {
+L68:         "path": "package.json",
+L69:         "line_start": 9,
+L70:         "line_end": 9,
+L71:         "snippet_hash": "020435ddf436",
+L72:         "display": "package.json:9"
+L73:       }
+L74:     }
+L75:   ],
+L76:   "usage_examples": [],
+L77:   "verification_steps": [],
+L78:   "common_failures": [],
+L79:   "unknowns": [
+L80:     {
+L81:       "what_is_missing": "Semantic analysis of code purpose and architecture",
+L82:       "why_it_matters": "Cannot determine system intent, integration patterns, or risk factors without LLM analysis",
+L83:       "what_evidence_needed": "Re-run without --no-llm flag for full analysis"
+L84:     }
+L85:   ],
+L86:   "missing_evidence_requests": [],
+L87:   "completeness": {
+L88:     "score": 32,
+L89:     "max": 100,
+L90:     "missing": [
+L91:       "config: no config item with name+purpose+verified evidence",
+L92:       "port_behavior: no port evidence with verified snippet_hash",
+L93:       "verification_steps: no step with both a runnable command and verified evidence",
+L94:       "usage_examples: no examples with meaningful descriptions"
+L95:     ],
+L96:     "deductions": [
+L97:       "-3 for 1 unknown(s)"
+L98:     ],
+L99:     "notes": "-3 for 1 unknown(s); No Dockerfile found; 1 unknown(s) reported"
+L100:   }
+L101: }
+L102: ```
+L103: 
+L104: ## 4. Limitations
+L105: - This dossier was generated in `--no-llm` mode
+L106: - No semantic analysis, claims extraction, or architecture inference was performed
+L107: - For full analysis, re-run without `--no-llm`
 
 --- FILE: output/REPORT_ENGINEER.md ---
 L1: # Program Totality Report — Engineer View
 L2: 
 L3: **EvidencePack Version:** 1.0
 L4: **Tool Version:** 0.1.0
-L5: **Generated:** 2026-02-15T08:22:15.077808+00:00
-L6: **Mode:** replit
-L7: **Run ID:** a6268fcf8672
+L5: **Generated:** 2026-02-15T08:22:31.443810+00:00
+L6: **Mode:** local
+L7: **Run ID:** acdc46d1589e
 L8: 
 L9: ---
 L10: 
-L11: ## PTA Contract Audit — Run a6268fcf8672
+L11: ## PTA Contract Audit — Run acdc46d1589e
 L12: 
 L13: ### 1. System Snapshot
 L14: 
 L15: | Measure | Value |
 L16: |---------|-------|
-L17: | Files Analyzed | 143 |
-L18: | Files Seen (incl. skipped) | 169 |
+L17: | Files Analyzed | 157 |
+L18: | Files Seen (incl. skipped) | 183 |
 L19: | Files Skipped | 26 |
-L20: | Claims Extracted | 17 |
-L21: | Claims with Deterministic Evidence | 15 |
+L20: | Claims Extracted | 9 |
+L21: | Claims with Deterministic Evidence | 7 |
 L22: | Unknown Governance Categories | 9 |
 L23: | Verified Structural Categories | 0 |
 L24: | Partial Coverage | Yes |
 L25: 
 L26: ### 2. Deterministic Coverage Index (DCI v1)
 L27: 
-L28: **Score:** 88.24%
+L28: **Score:** 77.78%
 L29: **Formula:** `verified_claims / total_claims`
 L30: 
-L31: 15 of 17 extracted claims contain hash-verified evidence.
+L31: 7 of 9 extracted claims contain hash-verified evidence.
 L32: 
 L33: This measures claim-to-evidence visibility only.
 L34: It does not measure code quality, security posture, or structural surface coverage.
 L35: 
 L36: ### 3. Reporting Completeness Index (RCI)
 L37: 
-L38: **Score:** 50.08%
+L38: **Score:** 36.59%
 L39: **Formula:** `average(claims_coverage, unknowns_coverage, howto_completeness)`
 L40: 
 L41: | Component | Score |
 L42: |-----------|-------|
-L43: | claims_coverage | 88.24% |
+L43: | claims_coverage | 77.78% |
 L44: | unknowns_coverage | 0.00% |
-L45: | howto_completeness | 62.00% |
+L45: | howto_completeness | 32.00% |
 L46: 
 L47: RCI is a documentation completeness metric.
 L48: It is not a security score and does not imply structural sufficiency.
@@ -1073,127 +851,74 @@ L67: There is no inference-based promotion from UNKNOWN to VERIFIED.
 L68: 
 L69: ---
 L70: 
-L71: ## Verified: Data & Security Posture
+L71: ## Verified: How to Use the Target System
 L72: 
-L73: ### System requires 3 secret(s): DATABASE_URL, AI_INTEGRATIONS_OPENAI_API_KEY, AI_INTEGRATIONS_OPENAI_BASE_URL
-L74: Confidence: 55%
-L75: - Evidence: `drizzle.config.ts:3` (hash: `a19790628fbe`)
-L76: - Evidence: `server/replit_integrations/audio/client.ts:10` (hash: `05da5f1b1281`)
-L77: - Evidence: `server/replit_integrations/audio/client.ts:11` (hash: `1f70e6a77d42`)
-L78: 
-L79: ### Secret "DATABASE_URL" is referenced in 4 file(s)
-L80: Confidence: 50%
-L81: - Evidence: `drizzle.config.ts:3` (hash: `a19790628fbe`)
-L82: - Evidence: `drizzle.config.ts:12` (hash: `1005be19f14a`)
-L83: 
-L84: ### Secret "AI_INTEGRATIONS_OPENAI_API_KEY" is referenced in 3 file(s)
-L85: Confidence: 50%
-L86: - Evidence: `server/replit_integrations/audio/client.ts:10` (hash: `05da5f1b1281`)
-L87: - Evidence: `server/replit_integrations/chat/routes.ts:6` (hash: `05da5f1b1281`)
-L88: 
-L89: ### Secret "AI_INTEGRATIONS_OPENAI_BASE_URL" is referenced in 3 file(s)
-L90: Confidence: 50%
-L91: - Evidence: `server/replit_integrations/audio/client.ts:11` (hash: `1f70e6a77d42`)
-L92: - Evidence: `server/replit_integrations/chat/routes.ts:7` (hash: `1f70e6a77d42`)
-L93: 
-L94: ## Verified: How to Use the Target System
+L73: ### npm script "dev" runs: NODE_ENV=development tsx server/index.ts
+L74: Confidence: 60%
+L75: - Evidence: `package.json:7` (hash: `fd240a9dc053`)
+L76: 
+L77: ### npm script "build" runs: tsx script/build.ts
+L78: Confidence: 60%
+L79: - Evidence: `package.json:8` (hash: `79d8bdf275d6`)
+L80: 
+L81: ### npm script "start" runs: NODE_ENV=production node dist/index.cjs
+L82: Confidence: 60%
+L83: - Evidence: `package.json:9` (hash: `020435ddf436`)
+L84: 
+L85: ## Verified: Integration Surface
+L86: 
+L87: ### Key dependencies: drizzle-orm, express, openai, react
+L88: Confidence: 50%
+L89: - Evidence: `package.json:13` (hash: `f7eebadd079d`)
+L90: 
+L91: ### Database schema/migration files detected: drizzle.config.ts, server/db.ts, shared/schema.ts
+L92: Confidence: 40%
+L93: - Evidence: `drizzle.config.ts:1` (hash: `1f5c93c3d974`)
+L94: - Evidence: `server/db.ts:1` (hash: `3d66d6ea5af3`)
 L95: 
-L96: ### npm script "dev" runs: NODE_ENV=development tsx server/index.ts
-L97: Confidence: 60%
-L98: - Evidence: `package.json:7` (hash: `fd240a9dc053`)
-L99: 
-L100: ### npm script "build" runs: tsx script/build.ts
-L101: Confidence: 60%
-L102: - Evidence: `package.json:8` (hash: `79d8bdf275d6`)
-L103: 
-L104: ### npm script "start" runs: NODE_ENV=production node dist/index.cjs
-L105: Confidence: 60%
-L106: - Evidence: `package.json:9` (hash: `020435ddf436`)
+L96: ## Verified: What the Target System Is
+L97: 
+L98: ### The project is named "rest-express" (from package.json)
+L99: Confidence: 60%
+L100: - Evidence: `package.json:2` (hash: `a1f1a980b4b8`)
+L101: 
+L102: ### Python project named "program-totality-analyzer" (from pyproject.toml)
+L103: Confidence: 50%
+L104: - Evidence: `pyproject.toml:2` (hash: `f0d4a96fe7d6`)
+L105: 
+L106: ## Verified Structural (deterministic extractors only)
 L107: 
-L108: ### Server binds to 0.0.0.0 (all interfaces)
-L109: Confidence: 55%
-L110: - Evidence: `server/index.ts:92` (hash: `75d345a78f84`)
-L111: - Evidence: `server/index.ts:96` (hash: `9b7206f3d09a`)
+L108: - **dependencies**: not_implemented: requires lockfile parser (package-lock.json, requirements.txt, etc.)
+L109: - **enforcement**: not_implemented: requires auth/middleware pattern detector over source files
+L110: - **routes**: not_implemented: requires AST/regex route extractor over source files
+L111: - **schemas**: not_implemented: requires migration/model file parser
 L112: 
-L113: ### Server port is configured via environment variable
-L114: Confidence: 55%
-L115: - Evidence: `server/index.ts:92` (hash: `75d345a78f84`)
-L116: - Evidence: `server/index.ts:96` (hash: `9b7206f3d09a`)
-L117: 
-L118: ### Replit run command: npm run dev
-L119: Confidence: 55%
-L120: - Evidence: `.replit:2` (hash: `96fa2e5505e4`)
-L121: - Evidence: `.replit:5` (hash: `550b970621c2`)
-L122: 
-L123: ## Verified: Integration Surface
-L124: 
-L125: ### Key dependencies: drizzle-orm, express, openai, react
-L126: Confidence: 50%
-L127: - Evidence: `package.json:13` (hash: `f7eebadd079d`)
+L113: ## Known Unknown Surface
+L114: 
+L115: | Category | Status | Notes |
+L116: |----------|--------|-------|
+L117: | tls_termination | UNKNOWN | No matching infrastructure/config artifacts found in file index |
+L118: | encryption_at_rest | UNKNOWN | No matching infrastructure/config artifacts found in file index |
+L119: | secret_management | UNKNOWN | No matching infrastructure/config artifacts found in file index |
+L120: | deployment_topology | UNKNOWN | No matching infrastructure/config artifacts found in file index |
+L121: | runtime_iam | UNKNOWN | No matching infrastructure/config artifacts found in file index |
+L122: | logging_sink | UNKNOWN | No matching infrastructure/config artifacts found in file index |
+L123: | monitoring_alerting | UNKNOWN | No matching infrastructure/config artifacts found in file index |
+L124: | backup_retention | UNKNOWN | No matching infrastructure/config artifacts found in file index |
+L125: | data_residency | UNKNOWN | No matching infrastructure/config artifacts found in file index |
+L126: 
+L127: ## Snippet Hashes (10 total)
 L128: 
-L129: ### External API dependency: OpenAI
-L130: Confidence: 45%
-L131: - Evidence: `server/replit_integrations/audio/client.ts:1` (hash: `1d3dd608c3bb`)
-L132: - Evidence: `server/replit_integrations/audio/routes.ts:3` (hash: `2f87d29d3b03`)
-L133: 
-L134: ### Database schema/migration files detected: drizzle.config.ts, server/db.ts, shared/schema.ts
-L135: Confidence: 40%
-L136: - Evidence: `drizzle.config.ts:1` (hash: `1f5c93c3d974`)
-L137: - Evidence: `server/db.ts:1` (hash: `3d66d6ea5af3`)
-L138: 
-L139: ## Verified: What the Target System Is
-L140: 
-L141: ### The project is named "rest-express" (from package.json)
-L142: Confidence: 60%
-L143: - Evidence: `package.json:2` (hash: `a1f1a980b4b8`)
-L144: 
-L145: ### Python project named "program-totality-analyzer" (from pyproject.toml)
-L146: Confidence: 50%
-L147: - Evidence: `pyproject.toml:2` (hash: `f0d4a96fe7d6`)
-L148: 
-L149: ## Verified Structural (deterministic extractors only)
-L150: 
-L151: - **dependencies**: not_implemented: requires lockfile parser (package-lock.json, requirements.txt, etc.)
-L152: - **enforcement**: not_implemented: requires auth/middleware pattern detector over source files
-L153: - **routes**: not_implemented: requires AST/regex route extractor over source files
-L154: - **schemas**: not_implemented: requires migration/model file parser
-L155: 
-L156: ## Known Unknown Surface
-L157: 
-L158: | Category | Status | Notes |
-L159: |----------|--------|-------|
-L160: | tls_termination | UNKNOWN | No matching infrastructure/config artifacts found in file index |
-L161: | encryption_at_rest | UNKNOWN | No matching infrastructure/config artifacts found in file index |
-L162: | secret_management | UNKNOWN | No matching infrastructure/config artifacts found in file index |
-L163: | deployment_topology | UNKNOWN | No matching infrastructure/config artifacts found in file index |
-L164: | runtime_iam | UNKNOWN | No matching infrastructure/config artifacts found in file index |
-L165: | logging_sink | UNKNOWN | No matching infrastructure/config artifacts found in file index |
-L166: | monitoring_alerting | UNKNOWN | No matching infrastructure/config artifacts found in file index |
-L167: | backup_retention | UNKNOWN | No matching infrastructure/config artifacts found in file index |
-L168: | data_residency | UNKNOWN | No matching infrastructure/config artifacts found in file index |
-L169: 
-L170: ## Snippet Hashes (20 total)
-L171: 
-L172: - `020435ddf436`
-L173: - `053150b640a7`
-L174: - `05da5f1b1281`
-L175: - `1005be19f14a`
-L176: - `1d3dd608c3bb`
-L177: - `1f5c93c3d974`
-L178: - `1f70e6a77d42`
-L179: - `2f87d29d3b03`
-L180: - `3d66d6ea5af3`
-L181: - `50c86b7ed8ac`
-L182: - `550b970621c2`
-L183: - `75d345a78f84`
-L184: - `79d8bdf275d6`
-L185: - `96fa2e5505e4`
-L186: - `9b7206f3d09a`
-L187: - `a19790628fbe`
-L188: - `a1f1a980b4b8`
-L189: - `f0d4a96fe7d6`
-L190: - `f7eebadd079d`
-L191: - `fd240a9dc053`
+L129: - `020435ddf436`
+L130: - `053150b640a7`
+L131: - `1f5c93c3d974`
+L132: - `3d66d6ea5af3`
+L133: - `50c86b7ed8ac`
+L134: - `79d8bdf275d6`
+L135: - `a1f1a980b4b8`
+L136: - `f0d4a96fe7d6`
+L137: - `f7eebadd079d`
+L138: - `fd240a9dc053`
 
 --- FILE: output/packs/docs_pack.txt ---
 L1: 

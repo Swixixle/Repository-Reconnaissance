@@ -991,32 +991,35 @@ L135:       try {
 L136:         const dossierPath = path.join(outputDir, "DOSSIER.md");
 L137:         const claimsPath = path.join(outputDir, "claims.json");
 L138:         const howtoPath = path.join(outputDir, "target_howto.json");
-L139:         const coveragePath = path.join(outputDir, "coverage.json");
-L140: 
-L141:         const dossier = await fs.readFile(dossierPath, "utf-8").catch(() => "");
-L142:         const claims = JSON.parse(await fs.readFile(claimsPath, "utf-8").catch(() => "{}"));
-L143:         const howto = JSON.parse(await fs.readFile(howtoPath, "utf-8").catch(() => "{}"));
-L144:         const coverage = JSON.parse(await fs.readFile(coveragePath, "utf-8").catch(() => "{}"));
-L145: 
-L146:         await storage.createAnalysis({
-L147:           projectId,
-L148:           dossier,
-L149:           claims,
-L150:           howto,
-L151:           coverage,
-L152:           unknowns: howto.unknowns || [],
-L153:         });
-L154: 
-L155:         await storage.updateProjectStatus(projectId, "completed");
-L156:       } catch (err) {
-L157:         console.error("Error saving analysis results:", err);
-L158:         await storage.updateProjectStatus(projectId, "failed");
-L159:       }
-L160:     } else {
-L161:       await storage.updateProjectStatus(projectId, "failed");
-L162:     }
-L163:   });
-L164: }
+L139:         const operatePath = path.join(outputDir, "operate.json");
+L140:         const coveragePath = path.join(outputDir, "coverage.json");
+L141: 
+L142:         const dossier = await fs.readFile(dossierPath, "utf-8").catch(() => "");
+L143:         const claims = JSON.parse(await fs.readFile(claimsPath, "utf-8").catch(() => "{}"));
+L144:         const howto = JSON.parse(await fs.readFile(howtoPath, "utf-8").catch(() => "{}"));
+L145:         const operate = JSON.parse(await fs.readFile(operatePath, "utf-8").catch(() => "{}"));
+L146:         const coverage = JSON.parse(await fs.readFile(coveragePath, "utf-8").catch(() => "{}"));
+L147: 
+L148:         await storage.createAnalysis({
+L149:           projectId,
+L150:           dossier,
+L151:           claims,
+L152:           howto,
+L153:           operate,
+L154:           coverage,
+L155:           unknowns: howto.unknowns || [],
+L156:         });
+L157: 
+L158:         await storage.updateProjectStatus(projectId, "completed");
+L159:       } catch (err) {
+L160:         console.error("Error saving analysis results:", err);
+L161:         await storage.updateProjectStatus(projectId, "failed");
+L162:       }
+L163:     } else {
+L164:       await storage.updateProjectStatus(projectId, "failed");
+L165:     }
+L166:   });
+L167: }
 
 --- FILE: server/replit_integrations/audio/index.ts ---
 L1: export { registerAudioRoutes } from "./routes";

@@ -1,153 +1,43 @@
 
---- FILE: drizzle.config.ts ---
-L1: import { defineConfig } from "drizzle-kit";
-L2: 
-L3: if (!process.env.DATABASE_URL) {
-L4:   throw new Error("DATABASE_URL, ensure the database is provisioned");
-L5: }
+--- FILE: .env.example ---
+L1: # Database Configuration
+L2: # PostgreSQL connection string
+L3: # For Replit: Use the PostgreSQL database from the Replit sidebar
+L4: # Example: postgresql://username:password@hostname:5432/database
+L5: DATABASE_URL=postgresql://user:password@localhost:5432/halo_receipts
 L6: 
-L7: export default defineConfig({
-L8:   out: "./migrations",
-L9:   schema: "./shared/schema.ts",
-L10:   dialect: "postgresql",
-L11:   dbCredentials: {
-L12:     url: process.env.DATABASE_URL,
-L13:   },
-L14: });
-
---- FILE: package.json ---
-L1: {
-L2:   "name": "rest-express",
-L3:   "version": "1.0.0",
-L4:   "type": "module",
-L5:   "license": "MIT",
-L6:   "scripts": {
-L7:     "dev": "NODE_ENV=development tsx server/index.ts",
-L8:     "build": "tsx script/build.ts",
-L9:     "start": "NODE_ENV=production node dist/index.cjs",
-L10:     "check": "tsc",
-L11:     "db:push": "drizzle-kit push"
-L12:   },
-L13:   "dependencies": {
-L14:     "@hookform/resolvers": "^3.10.0",
-L15:     "@jridgewell/trace-mapping": "^0.3.25",
-L16:     "@radix-ui/react-accordion": "^1.2.4",
-L17:     "@radix-ui/react-alert-dialog": "^1.1.7",
-L18:     "@radix-ui/react-aspect-ratio": "^1.1.3",
-L19:     "@radix-ui/react-avatar": "^1.1.4",
-L20:     "@radix-ui/react-checkbox": "^1.1.5",
-L21:     "@radix-ui/react-collapsible": "^1.1.4",
-L22:     "@radix-ui/react-context-menu": "^2.2.7",
-L23:     "@radix-ui/react-dialog": "^1.1.7",
-L24:     "@radix-ui/react-dropdown-menu": "^2.1.7",
-L25:     "@radix-ui/react-hover-card": "^1.1.7",
-L26:     "@radix-ui/react-label": "^2.1.3",
-L27:     "@radix-ui/react-menubar": "^1.1.7",
-L28:     "@radix-ui/react-navigation-menu": "^1.2.6",
-L29:     "@radix-ui/react-popover": "^1.1.7",
-L30:     "@radix-ui/react-progress": "^1.1.3",
-L31:     "@radix-ui/react-radio-group": "^1.2.4",
-L32:     "@radix-ui/react-scroll-area": "^1.2.4",
-L33:     "@radix-ui/react-select": "^2.1.7",
-L34:     "@radix-ui/react-separator": "^1.1.3",
-L35:     "@radix-ui/react-slider": "^1.2.4",
-L36:     "@radix-ui/react-slot": "^1.2.0",
-L37:     "@radix-ui/react-switch": "^1.1.4",
-L38:     "@radix-ui/react-tabs": "^1.1.4",
-L39:     "@radix-ui/react-toast": "^1.2.7",
-L40:     "@radix-ui/react-toggle": "^1.1.3",
-L41:     "@radix-ui/react-toggle-group": "^1.1.3",
-L42:     "@radix-ui/react-tooltip": "^1.2.0",
-L43:     "@tanstack/react-query": "^5.60.5",
-L44:     "class-variance-authority": "^0.7.1",
-L45:     "clsx": "^2.1.1",
-L46:     "cmdk": "^1.1.1",
-L47:     "connect-pg-simple": "^10.0.0",
-L48:     "date-fns": "^3.6.0",
-L49:     "drizzle-orm": "^0.39.3",
-L50:     "drizzle-zod": "^0.7.1",
-L51:     "embla-carousel-react": "^8.6.0",
-L52:     "express": "^5.0.1",
-L53:     "express-session": "^1.18.1",
-L54:     "framer-motion": "^11.18.2",
-L55:     "input-otp": "^1.4.2",
-L56:     "lucide-react": "^0.453.0",
-L57:     "memorystore": "^1.6.7",
-L58:     "next-themes": "^0.4.6",
-L59:     "openai": "^6.22.0",
-L60:     "p-limit": "^7.3.0",
-L61:     "p-retry": "^7.1.1",
-L62:     "passport": "^0.7.0",
-L63:     "passport-local": "^1.0.0",
-L64:     "pg": "^8.16.3",
-L65:     "react": "^18.3.1",
-L66:     "react-day-picker": "^8.10.1",
-L67:     "react-dom": "^18.3.1",
-L68:     "react-hook-form": "^7.55.0",
-L69:     "react-icons": "^5.4.0",
-L70:     "react-markdown": "^10.1.0",
-L71:     "react-resizable-panels": "^2.1.7",
-L72:     "recharts": "^2.15.2",
-L73:     "tailwind-merge": "^2.6.1",
-L74:     "tailwindcss-animate": "^1.0.7",
-L75:     "tw-animate-css": "^1.2.5",
-L76:     "vaul": "^1.1.2",
-L77:     "wouter": "^3.3.5",
-L78:     "ws": "^8.18.0",
-L79:     "zod": "^3.25.76",
-L80:     "zod-validation-error": "^3.5.4"
-L81:   },
-L82:   "devDependencies": {
-L83:     "@replit/vite-plugin-cartographer": "^0.4.4",
-L84:     "@replit/vite-plugin-dev-banner": "^0.1.1",
-L85:     "@replit/vite-plugin-runtime-error-modal": "^0.0.3",
-L86:     "@tailwindcss/typography": "^0.5.15",
-L87:     "@tailwindcss/vite": "^4.1.18",
-L88:     "@types/connect-pg-simple": "^7.0.3",
-L89:     "@types/express": "^5.0.0",
-L90:     "@types/express-session": "^1.18.0",
-L91:     "@types/node": "20.19.27",
-L92:     "@types/passport": "^1.0.16",
-L93:     "@types/passport-local": "^1.0.38",
-L94:     "@types/react": "^18.3.11",
-L95:     "@types/react-dom": "^18.3.1",
-L96:     "@types/ws": "^8.5.13",
-L97:     "@vitejs/plugin-react": "^4.7.0",
-L98:     "autoprefixer": "^10.4.20",
-L99:     "drizzle-kit": "^0.31.8",
-L100:     "esbuild": "^0.25.0",
-L101:     "postcss": "^8.4.47",
-L102:     "tailwindcss": "^3.4.17",
-L103:     "tsx": "^4.20.5",
-L104:     "typescript": "5.6.3",
-L105:     "vite": "^7.3.0"
-L106:   },
-L107:   "overrides": {
-L108:     "drizzle-kit": {
-L109:       "@esbuild-kit/esm-loader": "npm:tsx@^4.20.4"
-L110:     }
-L111:   },
-L112:   "optionalDependencies": {
-L113:     "bufferutil": "^4.0.8"
-L114:   }
-L115: }
-
---- FILE: postcss.config.js ---
-L1: export default {
-L2:   plugins: {
-L3:     tailwindcss: {},
-L4:     autoprefixer: {},
-L5:   },
-L6: }
+L7: # API Authentication
+L8: # API key for authenticating private endpoints
+L9: # In development, "dev-test-key-12345" is automatically available
+L10: API_KEY=your-api-key-here
+L11: 
+L12: # Application Configuration
+L13: NODE_ENV=development
+L14: PORT=5000
+L15: 
+L16: # Transcript Display Mode
+L17: # Options: full, redacted, hidden
+L18: TRANSCRIPT_MODE=full
+L19: 
+L20: # Session Security
+L21: # Secret key for session hashing in security audit
+L22: # Generate a strong random string for production
+L23: SESSION_SECRET=your-session-secret-here
+L24: 
+L25: # GitHub Integration (Optional)
+L26: # Only needed if using GitHub connectors
+L27: # REPLIT_CONNECTORS_HOSTNAME=your-replit-hostname
+L28: # REPL_IDENTITY=your-repl-identity
+L29: # WEB_REPL_RENEWAL=your-web-repl-renewal
 
 --- FILE: .replit ---
-L1: modules = ["nodejs-20", "web", "python-3.11", "postgresql-16"]
+L1: modules = ["nodejs-20", "web", "postgresql-16"]
 L2: run = "npm run dev"
 L3: hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 L4: 
 L5: [nix]
 L6: channel = "stable-24_05"
-L7: packages = ["libxcrypt"]
+L7: packages = ["jq", "unzip"]
 L8: 
 L9: [[ports]]
 L10: localPort = 5000
@@ -182,75 +72,165 @@ L38: task = "shell.exec"
 L39: args = "npm run dev"
 L40: waitForPort = 5000
 L41: 
-L42: [agent]
-L43: integrations = ["javascript_openai_ai_integrations:2.0.0"]
+L42: [userenv]
+L43: 
+L44: [userenv.development]
+L45: VITE_DEV_API_KEY = "dev-test-key-12345"
+L46: 
+L47: [agent]
+L48: integrations = ["github:1.0.0"]
 
---- FILE: tsconfig.json ---
+--- FILE: drizzle.config.ts ---
+L1: import { defineConfig } from "drizzle-kit";
+L2: 
+L3: if (!process.env.DATABASE_URL) {
+L4:   throw new Error("DATABASE_URL, ensure the database is provisioned");
+L5: }
+L6: 
+L7: export default defineConfig({
+L8:   out: "./migrations",
+L9:   schema: "./shared/schema.ts",
+L10:   dialect: "postgresql",
+L11:   dbCredentials: {
+L12:     url: process.env.DATABASE_URL,
+L13:   },
+L14: });
+
+--- FILE: package.json ---
 L1: {
-L2:   "include": ["client/src/**/*", "shared/**/*", "server/**/*"],
-L3:   "exclude": ["node_modules", "build", "dist", "**/*.test.ts"],
-L4:   "compilerOptions": {
-L5:     "incremental": true,
-L6:     "tsBuildInfoFile": "./node_modules/typescript/tsbuildinfo",
-L7:     "noEmit": true,
-L8:     "module": "ESNext",
-L9:     "strict": true,
-L10:     "lib": ["esnext", "dom", "dom.iterable"],
-L11:     "jsx": "preserve",
-L12:     "esModuleInterop": true,
-L13:     "skipLibCheck": true,
-L14:     "allowImportingTsExtensions": true,
-L15:     "moduleResolution": "bundler",
-L16:     "baseUrl": ".",
-L17:     "types": ["node", "vite/client"],
-L18:     "paths": {
-L19:       "@/*": ["./client/src/*"],
-L20:       "@shared/*": ["./shared/*"]
-L21:     }
-L22:   }
-L23: }
+L2:   "name": "rest-express",
+L3:   "version": "1.0.0",
+L4:   "type": "module",
+L5:   "license": "MIT",
+L6:   "scripts": {
+L7:     "dev": "NODE_ENV=development tsx server/index.ts",
+L8:     "build": "tsx script/build.ts",
+L9:     "start": "NODE_ENV=production node dist/index.cjs",
+L10:     "check": "tsc",
+L11:     "db:push": "drizzle-kit push"
+L12:   },
+L13:   "dependencies": {
+L14:     "@hookform/resolvers": "^3.10.0",
+L15:     "@jridgewell/trace-mapping": "^0.3.25",
+L16:     "@octokit/rest": "^22.0.0",
+L17:     "@radix-ui/react-accordion": "^1.2.4",
+L18:     "@radix-ui/react-alert-dialog": "^1.1.7",
+L19:     "@radix-ui/react-aspect-ratio": "^1.1.3",
+L20:     "@radix-ui/react-avatar": "^1.1.4",
+L21:     "@radix-ui/react-checkbox": "^1.1.5",
+L22:     "@radix-ui/react-collapsible": "^1.1.4",
+L23:     "@radix-ui/react-context-menu": "^2.2.7",
+L24:     "@radix-ui/react-dialog": "^1.1.7",
+L25:     "@radix-ui/react-dropdown-menu": "^2.1.7",
+L26:     "@radix-ui/react-hover-card": "^1.1.7",
+L27:     "@radix-ui/react-label": "^2.1.3",
+L28:     "@radix-ui/react-menubar": "^1.1.7",
+L29:     "@radix-ui/react-navigation-menu": "^1.2.6",
+L30:     "@radix-ui/react-popover": "^1.1.7",
+L31:     "@radix-ui/react-progress": "^1.1.3",
+L32:     "@radix-ui/react-radio-group": "^1.2.4",
+L33:     "@radix-ui/react-scroll-area": "^1.2.4",
+L34:     "@radix-ui/react-select": "^2.1.7",
+L35:     "@radix-ui/react-separator": "^1.1.3",
+L36:     "@radix-ui/react-slider": "^1.2.4",
+L37:     "@radix-ui/react-slot": "^1.2.0",
+L38:     "@radix-ui/react-switch": "^1.1.4",
+L39:     "@radix-ui/react-tabs": "^1.1.4",
+L40:     "@radix-ui/react-toast": "^1.2.7",
+L41:     "@radix-ui/react-toggle": "^1.1.3",
+L42:     "@radix-ui/react-toggle-group": "^1.1.3",
+L43:     "@radix-ui/react-tooltip": "^1.2.0",
+L44:     "@tanstack/react-query": "^5.60.5",
+L45:     "@tanstack/react-virtual": "^3.13.18",
+L46:     "@types/archiver": "^7.0.0",
+L47:     "archiver": "^7.0.1",
+L48:     "class-variance-authority": "^0.7.1",
+L49:     "clsx": "^2.1.1",
+L50:     "cmdk": "^1.1.1",
+L51:     "connect-pg-simple": "^10.0.0",
+L52:     "date-fns": "^3.6.0",
+L53:     "drizzle-orm": "^0.39.3",
+L54:     "drizzle-zod": "^0.7.0",
+L55:     "embla-carousel-react": "^8.6.0",
+L56:     "express": "^5.0.1",
+L57:     "express-session": "^1.18.1",
+L58:     "framer-motion": "^11.13.1",
+L59:     "input-otp": "^1.4.2",
+L60:     "lucide-react": "^0.453.0",
+L61:     "memorystore": "^1.6.7",
+L62:     "next-themes": "^0.4.6",
+L63:     "passport": "^0.7.0",
+L64:     "passport-local": "^1.0.0",
+L65:     "pg": "^8.16.3",
+L66:     "react": "^18.3.1",
+L67:     "react-day-picker": "^8.10.1",
+L68:     "react-dom": "^18.3.1",
+L69:     "react-hook-form": "^7.55.0",
+L70:     "react-icons": "^5.4.0",
+L71:     "react-resizable-panels": "^2.1.7",
+L72:     "recharts": "^2.15.2",
+L73:     "tailwind-merge": "^2.6.0",
+L74:     "tailwindcss-animate": "^1.0.7",
+L75:     "tw-animate-css": "^1.2.5",
+L76:     "vaul": "^1.1.2",
+L77:     "vitest": "^4.0.18",
+L78:     "wouter": "^3.3.5",
+L79:     "ws": "^8.18.0",
+L80:     "zod": "^3.24.2",
+L81:     "zod-validation-error": "^3.4.0"
+L82:   },
+L83:   "devDependencies": {
+L84:     "@replit/vite-plugin-cartographer": "^0.4.4",
+L85:     "@replit/vite-plugin-dev-banner": "^0.1.1",
+L86:     "@replit/vite-plugin-runtime-error-modal": "^0.0.3",
+L87:     "@tailwindcss/typography": "^0.5.15",
+L88:     "@tailwindcss/vite": "^4.1.18",
+L89:     "@types/connect-pg-simple": "^7.0.3",
+L90:     "@types/express": "^5.0.0",
+L91:     "@types/express-session": "^1.18.0",
+L92:     "@types/node": "20.19.27",
+L93:     "@types/passport": "^1.0.16",
+L94:     "@types/passport-local": "^1.0.38",
+L95:     "@types/react": "^18.3.11",
+L96:     "@types/react-dom": "^18.3.1",
+L97:     "@types/ws": "^8.5.13",
+L98:     "@vitejs/plugin-react": "^4.7.0",
+L99:     "autoprefixer": "^10.4.20",
+L100:     "drizzle-kit": "^0.31.8",
+L101:     "esbuild": "^0.25.0",
+L102:     "postcss": "^8.4.47",
+L103:     "tailwindcss": "^3.4.17",
+L104:     "tsx": "^4.20.5",
+L105:     "typescript": "5.6.3",
+L106:     "vite": "^7.3.0"
+L107:   },
+L108:   "overrides": {
+L109:     "drizzle-kit": {
+L110:       "@esbuild-kit/esm-loader": "npm:tsx@^4.20.4"
+L111:     }
+L112:   },
+L113:   "optionalDependencies": {
+L114:     "bufferutil": "^4.0.8"
+L115:   }
+L116: }
 
---- FILE: vite.config.ts ---
-L1: import { defineConfig } from "vite";
-L2: import react from "@vitejs/plugin-react";
-L3: import path from "path";
-L4: import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
-L5: 
-L6: export default defineConfig({
-L7:   plugins: [
-L8:     react(),
-L9:     runtimeErrorOverlay(),
-L10:     ...(process.env.NODE_ENV !== "production" &&
-L11:     process.env.REPL_ID !== undefined
-L12:       ? [
-L13:           await import("@replit/vite-plugin-cartographer").then((m) =>
-L14:             m.cartographer(),
-L15:           ),
-L16:           await import("@replit/vite-plugin-dev-banner").then((m) =>
-L17:             m.devBanner(),
-L18:           ),
-L19:         ]
-L20:       : []),
-L21:   ],
-L22:   resolve: {
-L23:     alias: {
-L24:       "@": path.resolve(import.meta.dirname, "client", "src"),
-L25:       "@shared": path.resolve(import.meta.dirname, "shared"),
-L26:       "@assets": path.resolve(import.meta.dirname, "attached_assets"),
-L27:     },
-L28:   },
-L29:   root: path.resolve(import.meta.dirname, "client"),
-L30:   build: {
-L31:     outDir: path.resolve(import.meta.dirname, "dist/public"),
-L32:     emptyOutDir: true,
-L33:   },
-L34:   server: {
-L35:     fs: {
-L36:       strict: true,
-L37:       deny: ["**/.*"],
-L38:     },
-L39:   },
-L40: });
+--- FILE: postcss.config.js ---
+L1: export default {
+L2:   plugins: {
+L3:     tailwindcss: {},
+L4:     autoprefixer: {},
+L5:   },
+L6: }
+
+--- FILE: replit.nix ---
+L1: { pkgs }: {
+L2:   deps = [
+L3:     pkgs.nodejs_20
+L4:     pkgs.nodePackages.typescript-language-server
+L5:     pkgs.nodePackages.npm
+L6:     pkgs.postgresql
+L7:   ];
+L8: }
 
 --- FILE: tailwind.config.ts ---
 L1: import type { Config } from "tailwindcss";
@@ -341,49 +321,105 @@ L85:       fontFamily: {
 L86:         sans: ["var(--font-sans)"],
 L87:         serif: ["var(--font-serif)"],
 L88:         mono: ["var(--font-mono)"],
-L89:         display: ["var(--font-display)"],
-L90:       },
-L91:       keyframes: {
-L92:         "accordion-down": {
-L93:           from: { height: "0" },
-L94:           to: { height: "var(--radix-accordion-content-height)" },
-L95:         },
-L96:         "accordion-up": {
-L97:           from: { height: "var(--radix-accordion-content-height)" },
-L98:           to: { height: "0" },
-L99:         },
-L100:       },
-L101:       animation: {
-L102:         "accordion-down": "accordion-down 0.2s ease-out",
-L103:         "accordion-up": "accordion-up 0.2s ease-out",
-L104:       },
-L105:     },
-L106:   },
-L107:   plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
-L108: } satisfies Config;
+L89:       },
+L90:       keyframes: {
+L91:         "accordion-down": {
+L92:           from: { height: "0" },
+L93:           to: { height: "var(--radix-accordion-content-height)" },
+L94:         },
+L95:         "accordion-up": {
+L96:           from: { height: "var(--radix-accordion-content-height)" },
+L97:           to: { height: "0" },
+L98:         },
+L99:       },
+L100:       animation: {
+L101:         "accordion-down": "accordion-down 0.2s ease-out",
+L102:         "accordion-up": "accordion-up 0.2s ease-out",
+L103:       },
+L104:     },
+L105:   },
+L106:   plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
+L107: } satisfies Config;
 
---- FILE: pyproject.toml ---
-L1: [project]
-L2: name = "program-totality-analyzer"
-L3: version = "0.1.0"
-L4: description = "Evidence-bound static analysis tool that generates comprehensive technical dossiers for software projects"
-L5: requires-python = ">=3.11"
-L6: dependencies = [
-L7:     "gitpython>=3.1.46",
-L8:     "jsonschema>=4.26.0",
-L9:     "openai>=2.21.0",
-L10:     "pydantic>=2.12.5",
-L11:     "python-dotenv>=1.2.1",
-L12:     "rich>=14.3.2",
-L13:     "typer>=0.23.1",
-L14: ]
-L15: 
-L16: [build-system]
-L17: requires = ["hatchling"]
-L18: build-backend = "hatchling.build"
-L19: 
-L20: [tool.hatch.build.targets.wheel]
-L21: packages = ["server"]
-L22: 
-L23: [project.scripts]
-L24: pta = "server.analyzer.src.analyzer_cli:app"
+--- FILE: tsconfig.json ---
+L1: {
+L2:   "include": ["client/src/**/*", "shared/**/*", "server/**/*"],
+L3:   "exclude": ["node_modules", "build", "dist", "**/*.test.ts"],
+L4:   "compilerOptions": {
+L5:     "incremental": true,
+L6:     "tsBuildInfoFile": "./node_modules/typescript/tsbuildinfo",
+L7:     "noEmit": true,
+L8:     "module": "ESNext",
+L9:     "strict": true,
+L10:     "lib": ["esnext", "dom", "dom.iterable"],
+L11:     "jsx": "preserve",
+L12:     "esModuleInterop": true,
+L13:     "skipLibCheck": true,
+L14:     "allowImportingTsExtensions": true,
+L15:     "moduleResolution": "bundler",
+L16:     "baseUrl": ".",
+L17:     "types": ["node", "vite/client"],
+L18:     "paths": {
+L19:       "@/*": ["./client/src/*"],
+L20:       "@shared/*": ["./shared/*"]
+L21:     }
+L22:   }
+L23: }
+
+--- FILE: vite.config.ts ---
+L1: import { defineConfig } from "vite";
+L2: import react from "@vitejs/plugin-react";
+L3: import path from "path";
+L4: import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+L5: 
+L6: export default defineConfig({
+L7:   plugins: [
+L8:     react(),
+L9:     runtimeErrorOverlay(),
+L10:     ...(process.env.NODE_ENV !== "production" &&
+L11:     process.env.REPL_ID !== undefined
+L12:       ? [
+L13:           await import("@replit/vite-plugin-cartographer").then((m) =>
+L14:             m.cartographer(),
+L15:           ),
+L16:           await import("@replit/vite-plugin-dev-banner").then((m) =>
+L17:             m.devBanner(),
+L18:           ),
+L19:         ]
+L20:       : []),
+L21:   ],
+L22:   resolve: {
+L23:     alias: {
+L24:       "@": path.resolve(import.meta.dirname, "client", "src"),
+L25:       "@shared": path.resolve(import.meta.dirname, "shared"),
+L26:       "@assets": path.resolve(import.meta.dirname, "attached_assets"),
+L27:     },
+L28:   },
+L29:   root: path.resolve(import.meta.dirname, "client"),
+L30:   build: {
+L31:     outDir: path.resolve(import.meta.dirname, "dist/public"),
+L32:     emptyOutDir: true,
+L33:   },
+L34:   server: {
+L35:     fs: {
+L36:       strict: true,
+L37:       deny: ["**/.*"],
+L38:     },
+L39:   },
+L40: });
+
+--- FILE: vitest.config.ts ---
+L1: import { defineConfig } from "vitest/config";
+L2: import path from "path";
+L3: 
+L4: export default defineConfig({
+L5:   test: {
+L6:     include: ["server/__tests__/**/*.test.ts"],
+L7:     globals: true,
+L8:   },
+L9:   resolve: {
+L10:     alias: {
+L11:       "@shared": path.resolve(import.meta.dirname, "shared"),
+L12:     },
+L13:   },
+L14: });

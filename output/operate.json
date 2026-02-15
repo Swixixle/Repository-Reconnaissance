@@ -1,8 +1,8 @@
 {
   "tool_version": "pta-0.1.0",
   "schema_version": "1.0",
-  "mode": "local",
-  "generated_at": "2026-02-15T08:22:31.435604+00:00",
+  "mode": "replit",
+  "generated_at": "2026-02-15T08:28:39.908072+00:00",
   "boot": {
     "install": [
       {
@@ -667,6 +667,7 @@
     {
       "rank": 1,
       "title": "No Dockerfile detected",
+      "severity": "medium",
       "status": "UNKNOWN",
       "evidence": [],
       "action": "Add Dockerfile or document deploy method"
@@ -674,6 +675,7 @@
     {
       "rank": 2,
       "title": "No health endpoint or observability setup detected",
+      "severity": "low",
       "status": "UNKNOWN",
       "evidence": [],
       "action": "Investigate and document Observability"

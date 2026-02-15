@@ -4,7 +4,8 @@ These are sample outputs from the Program Totality Analyzer running in `--no-llm
 
 ## Files
 
-- `out/target_howto.sample.json` — Operator manual: install steps, config, run commands, Replit execution profile. Every item cites file:line evidence with SHA-256 snippet hashes.
+- `out/operate.sample.json` — Operator dashboard: boot commands, integration points, deployment config, readiness scores, gaps with severity. Deterministic, evidence-bound.
+- `out/target_howto.sample.json` — Legacy operator manual. Prefer `operate.json` for operator workflows.
 - `out/coverage.sample.json` — Scan metadata: mode requested, files scanned/skipped, Replit detection evidence, self-skip configuration.
 
 ## Generating Your Own

@@ -1,34 +1,60 @@
 {
   "prereqs": [
-    "Node.js",
-    "Python"
+    "Node.js 20+ (for backend and frontend, see .replit:1, package.json:4)",
+    "npm (for JavaScript workflows, see README.md:24, .replit:2, package.json:7)",
+    "Python 3.11+ (for the analyzer CLI, see .replit:1, pyproject.toml:5)",
+    "PostgreSQL 14+ (for persistent database, see .replit:1, README.md:23-24, drizzle.config.ts:10)"
   ],
   "install_steps": [
     {
-      "step": "Install Node dependencies",
-      "command": "npm ci",
+      "step": "Install Python package (analyzer) in editable mode",
+      "command": "pip install -e .",
       "evidence": {
-        "kind": "file_exists",
-        "path": "package-lock.json",
-        "snippet_hash": "053150b640a7",
-        "display": "package-lock.json (file exists)"
+        "path": "README.md",
+        "line_start": 24,
+        "line_end": 24,
+        "snippet_hash": "92755120ac2c",
+        "display": "README.md:24"
       }
     },
     {
-      "step": "Install Python dependencies",
-      "command": "pip install .",
+      "step": "Install Node.js dependencies",
+      "command": "npm install",
       "evidence": {
-        "kind": "file_exists",
-        "path": "pyproject.toml",
-        "snippet_hash": "50c86b7ed8ac",
-        "display": "pyproject.toml (file exists)"
+        "path": "README.md",
+        "line_start": 29,
+        "line_end": 29,
+        "snippet_hash": "ad332335cfaa",
+        "display": "README.md:29"
+      }
+    },
+    {
+      "step": "Copy example environment config",
+      "command": "cp .env.example .env",
+      "evidence": {
+        "path": "README.md",
+        "line_start": 33,
+        "line_end": 33,
+        "snippet_hash": "e3b0c44298fc",
+        "display": "README.md:33"
+      }
+    },
+    {
+      "step": "Edit .env with your secrets (see config section below)",
+      "command": null,
+      "evidence": {
+        "path": "README.md",
+        "line_start": 34,
+        "line_end": 34,
+        "snippet_hash": "700f48e26e0c",
+        "display": "README.md:34"
       }
     }
   ],
   "config": [
     {
       "name": "DATABASE_URL",
-      "purpose": "Secret referenced in code (see evidence)",
+      "purpose": "PostgreSQL connection string; required for backend, ORM and migrations",
       "evidence": {
         "path": "drizzle.config.ts",
         "line_start": 3,
@@ -39,7 +65,7 @@
     },
     {
       "name": "AI_INTEGRATIONS_OPENAI_API_KEY",
-      "purpose": "Secret referenced in code (see evidence)",
+      "purpose": "API key used for OpenAI LLM analysis (required for LLM mode or integration features)",
       "evidence": {
         "path": "server/replit_integrations/audio/client.ts",
         "line_start": 10,
@@ -50,7 +76,7 @@
     },
     {
       "name": "AI_INTEGRATIONS_OPENAI_BASE_URL",
-      "purpose": "Secret referenced in code (see evidence)",
+      "purpose": "Override OpenAI API base URL (required for OpenAI LLM integration)",
       "evidence": {
         "path": "server/replit_integrations/audio/client.ts",
         "line_start": 11,
@@ -58,24 +84,35 @@
         "snippet_hash": "1f70e6a77d42",
         "display": "server/replit_integrations/audio/client.ts:11"
       }
+    },
+    {
+      "name": "PORT",
+      "purpose": "Sets the HTTP server port (default 5000 in Replit; for frontend/dev server, default is auto-injected in .replit)",
+      "evidence": {
+        "path": ".replit",
+        "line_start": 14,
+        "line_end": 14,
+        "snippet_hash": "2cb616fc39c1",
+        "display": ".replit:14"
+      }
     }
   ],
   "run_dev": [
     {
-      "step": "Start dev server",
+      "step": "Run development server (backend + frontend HMR, requires .env configured)",
       "command": "npm run dev",
       "evidence": {
-        "path": "package.json",
-        "line_start": 7,
-        "line_end": 7,
-        "snippet_hash": "fd240a9dc053",
-        "display": "package.json:7"
+        "path": ".replit",
+        "line_start": 2,
+        "line_end": 2,
+        "snippet_hash": "96fa2e5505e4",
+        "display": ".replit:2"
       }
     }
   ],
   "run_prod": [
     {
-      "step": "Build for production",
+      "step": "Build frontend and backend",
       "command": "npm run build",
       "evidence": {
         "path": "package.json",
@@ -86,8 +123,8 @@
       }
     },
     {
-      "step": "Start production",
-      "command": "npm start",
+      "step": "Run production server",
+      "command": "npm run start",
       "evidence": {
         "path": "package.json",
         "line_start": 9,
@@ -97,38 +134,131 @@
       }
     }
   ],
-  "usage_examples": [],
-  "verification_steps": [],
-  "common_failures": [],
-  "unknowns": [
+  "usage_examples": [
     {
-      "what_is_missing": "Semantic analysis of code purpose and architecture",
-      "why_it_matters": "Cannot determine system intent, integration patterns, or risk factors without LLM analysis",
-      "what_evidence_needed": "Re-run without --no-llm flag for full analysis"
+      "description": "Health check endpoint (verifies API is up)",
+      "command": "curl http://localhost:5000/api/health"
+    },
+    {
+      "description": "Readiness endpoint",
+      "command": "curl http://localhost:5000/api/ready"
+    },
+    {
+      "description": "Run analyzer in deterministic mode (no LLMs) for local analysis",
+      "command": "pta analyze --replit -o ./my_output --no-llm"
     }
   ],
-  "missing_evidence_requests": [],
+  "verification_steps": [
+    {
+      "step": "Verify database schema applied",
+      "command": "npm run db:push",
+      "evidence": {
+        "path": "package.json",
+        "line_start": 11,
+        "line_end": 11,
+        "snippet_hash": "3a8be55004c2",
+        "display": "package.json:11"
+      }
+    },
+    {
+      "step": "Check health endpoint is accessible",
+      "command": "curl http://localhost:5000/api/health",
+      "evidence": {
+        "path": "docs/dossiers/lantern_program_totality_dossier.md",
+        "line_start": 128,
+        "line_end": 128,
+        "snippet_hash": "4994405dd75c",
+        "display": "docs/dossiers/lantern_program_totality_dossier.md:128"
+      }
+    }
+  ],
+  "common_failures": [
+    {
+      "symptom": "401 Unauthorized errors",
+      "cause": "Missing or incorrect API_KEY in X-API-KEY header",
+      "fix": "Set correct API_KEY in .env and supply as HTTP header",
+      "evidence": {
+        "path": "docs/dossiers/lantern_program_totality_dossier.md",
+        "line_start": 151,
+        "line_end": 151,
+        "snippet_hash": "ab249b766ec2",
+        "display": "docs/dossiers/lantern_program_totality_dossier.md:151"
+      }
+    },
+    {
+      "symptom": "Database connection errors/crash",
+      "cause": "DATABASE_URL is absent, invalid or database server is offline",
+      "fix": "Check credentials in .env and ensure PostgreSQL is running",
+      "evidence": {
+        "path": "drizzle.config.ts",
+        "line_start": 3,
+        "line_end": 3,
+        "snippet_hash": "a19790628fbe",
+        "display": "drizzle.config.ts:3"
+      }
+    },
+    {
+      "symptom": "App does not listen on expected port",
+      "cause": "App not started, port conflict or .env misconfigured",
+      "fix": "Check PORT and logs; make sure PORT=5000 and it is not already used",
+      "evidence": {
+        "path": ".replit",
+        "line_start": 10,
+        "line_end": 10,
+        "snippet_hash": "47abfb4488e8",
+        "display": ".replit:10"
+      }
+    }
+  ],
+  "unknowns": [
+    {
+      "what_is_missing": "Production deployment instructions outside Replit (systemd, Docker, PM2)",
+      "why_it_matters": "Non-Replit deployment may require system service or container orchestration",
+      "what_evidence_needed": "Dockerfile, systemd service unit, or production deployment docs"
+    },
+    {
+      "what_is_missing": "Detailed logs storage or viewing commands",
+      "why_it_matters": "Troubleshooting production issues depends on access to logs",
+      "what_evidence_needed": "Documentation of log path, or sample tail/view commands"
+    },
+    {
+      "what_is_missing": "Standalone frontend build/start instructions for non-Replit split deployments",
+      "why_it_matters": "Operators may want to host frontend separately",
+      "what_evidence_needed": "Frontend hosting/build/start README steps"
+    },
+    {
+      "what_is_missing": "Outbound webhook/event integration documentation",
+      "why_it_matters": "Essential for integrations with SIEM/alerting",
+      "what_evidence_needed": "Sample webhook config or integration docs"
+    }
+  ],
+  "missing_evidence_requests": [
+    "No direct evidence for production process manager or container deployment (systemd/Docker/PM2) found",
+    "No log storage/viewing commands documented",
+    "No dedicated frontend production hosting/serving instructions found",
+    "No documentation or code evidence for outbound webhooks or event integrations"
+  ],
   "replit_execution_profile": {
     "run_command": "npm run dev",
     "language": "nodejs",
     "port_binding": {
-      "port": null,
+      "port": 5000,
       "binds_all_interfaces": true,
       "uses_env_port": true,
       "evidence": [
         {
-          "path": "server/index.ts",
-          "line_start": 92,
-          "line_end": 92,
-          "snippet_hash": "75d345a78f84",
-          "display": "server/index.ts:92"
+          "path": ".replit",
+          "line_start": 10,
+          "line_end": 10,
+          "snippet_hash": "9d940edc2ff7",
+          "display": ".replit:10"
         },
         {
-          "path": "server/index.ts",
-          "line_start": 96,
-          "line_end": 96,
-          "snippet_hash": "9b7206f3d09a",
-          "display": "server/index.ts:96"
+          "path": ".replit",
+          "line_start": 14,
+          "line_end": 14,
+          "snippet_hash": "ea627b192d4e",
+          "display": ".replit:14"
         }
       ]
     },
@@ -142,27 +272,6 @@
             "line_end": 3,
             "snippet_hash": "a19790628fbe",
             "display": "drizzle.config.ts:3"
-          },
-          {
-            "path": "drizzle.config.ts",
-            "line_start": 12,
-            "line_end": 12,
-            "snippet_hash": "1005be19f14a",
-            "display": "drizzle.config.ts:12"
-          },
-          {
-            "path": "server/db.ts",
-            "line_start": 7,
-            "line_end": 7,
-            "snippet_hash": "a19790628fbe",
-            "display": "server/db.ts:7"
-          },
-          {
-            "path": "server/db.ts",
-            "line_start": 13,
-            "line_end": 13,
-            "snippet_hash": "111f33de9945",
-            "display": "server/db.ts:13"
           }
         ]
       },
@@ -175,20 +284,6 @@
             "line_end": 10,
             "snippet_hash": "05da5f1b1281",
             "display": "server/replit_integrations/audio/client.ts:10"
-          },
-          {
-            "path": "server/replit_integrations/chat/routes.ts",
-            "line_start": 6,
-            "line_end": 6,
-            "snippet_hash": "05da5f1b1281",
-            "display": "server/replit_integrations/chat/routes.ts:6"
-          },
-          {
-            "path": "server/replit_integrations/image/client.ts",
-            "line_start": 6,
-            "line_end": 6,
-            "snippet_hash": "05da5f1b1281",
-            "display": "server/replit_integrations/image/client.ts:6"
           }
         ]
       },
@@ -201,20 +296,6 @@
             "line_end": 11,
             "snippet_hash": "1f70e6a77d42",
             "display": "server/replit_integrations/audio/client.ts:11"
-          },
-          {
-            "path": "server/replit_integrations/chat/routes.ts",
-            "line_start": 7,
-            "line_end": 7,
-            "snippet_hash": "1f70e6a77d42",
-            "display": "server/replit_integrations/chat/routes.ts:7"
-          },
-          {
-            "path": "server/replit_integrations/image/client.ts",
-            "line_start": 7,
-            "line_end": 7,
-            "snippet_hash": "1f70e6a77d42",
-            "display": "server/replit_integrations/image/client.ts:7"
           }
         ]
       }
@@ -223,47 +304,17 @@
       {
         "api": "OpenAI",
         "evidence_files": [
-          {
-            "path": "server/replit_integrations/audio/client.ts",
-            "line_start": 1,
-            "line_end": 1,
-            "snippet_hash": "1d3dd608c3bb",
-            "display": "server/replit_integrations/audio/client.ts:1"
-          },
-          {
-            "path": "server/replit_integrations/audio/routes.ts",
-            "line_start": 3,
-            "line_end": 3,
-            "snippet_hash": "2f87d29d3b03",
-            "display": "server/replit_integrations/audio/routes.ts:3"
-          },
-          {
-            "path": "server/replit_integrations/chat/routes.ts",
-            "line_start": 2,
-            "line_end": 2,
-            "snippet_hash": "4db7290b0afd",
-            "display": "server/replit_integrations/chat/routes.ts:2"
-          },
-          {
-            "path": "server/replit_integrations/image/routes.ts",
-            "line_start": 2,
-            "line_end": 2,
-            "snippet_hash": "7fd5b3abbeee",
-            "display": "server/replit_integrations/image/routes.ts:2"
-          },
-          {
-            "path": "server/replit_integrations/image/client.ts",
-            "line_start": 2,
-            "line_end": 2,
-            "snippet_hash": "1d3dd608c3bb",
-            "display": "server/replit_integrations/image/client.ts:2"
-          }
+          "server/replit_integrations/audio/client.ts:1",
+          "server/replit_integrations/audio/routes.ts:3",
+          "server/replit_integrations/chat/routes.ts:2",
+          "server/replit_integrations/image/routes.ts:2",
+          "server/replit_integrations/image/client.ts:2"
         ]
       }
     ],
     "deployment_assumptions": [
-      "Binds to 0.0.0.0 (all interfaces)",
-      "No Dockerfile - depends on Replit runtime or manual setup",
+      "Binds to 0.0.0.0 (all interfaces, .replit:10,14)",
+      "No Dockerfile found, so deployment depends on Replit or equivalent Node/PG runtime",
       "Requires 3 secret(s): DATABASE_URL, AI_INTEGRATIONS_OPENAI_API_KEY, AI_INTEGRATIONS_OPENAI_BASE_URL"
     ],
     "observability": {
@@ -287,19 +338,19 @@
       ]
     },
     "limitations": [
-      "Deterministic mode (--no-llm): no semantic analysis performed"
+      "No evidence found for non-Replit container or systemd deployment",
+      "No log viewing/storage path documentation",
+      "No explicit frontend-only production serving instructions",
+      "No outbound webhook integration documentation found"
     ]
   },
   "completeness": {
-    "score": 62,
+    "score": 88,
     "max": 100,
-    "missing": [
-      "verification_steps: no step with both a runnable command and verified evidence",
-      "usage_examples: no examples with meaningful descriptions"
-    ],
+    "missing": [],
     "deductions": [
-      "-3 for 1 unknown(s)"
+      "-12 for 4 unknown(s)"
     ],
-    "notes": "-3 for 1 unknown(s); No Dockerfile found; 1 unknown(s) reported"
+    "notes": "-12 for 4 unknown(s); No Dockerfile found; 4 unknown(s) reported"
   }
 }

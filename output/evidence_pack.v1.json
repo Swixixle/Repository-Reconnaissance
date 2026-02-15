@@ -1,9 +1,9 @@
 {
   "evidence_pack_version": "1.0",
   "tool_version": "0.1.0",
-  "generated_at": "2026-02-15T08:22:31.443810+00:00",
-  "mode": "local",
-  "run_id": "acdc46d1589e",
+  "generated_at": "2026-02-15T08:28:39.917837+00:00",
+  "mode": "replit",
+  "run_id": "43f6636690d6",
   "verified": {
     "What the Target System Is": [
       {
@@ -87,6 +87,78 @@
           }
         ],
         "confidence": 0.6
+      },
+      {
+        "id": "claim_007",
+        "statement": "Server binds to 0.0.0.0 (all interfaces)",
+        "section": "How to Use the Target System",
+        "evidence": [
+          {
+            "path": "server/index.ts",
+            "line_start": 92,
+            "line_end": 92,
+            "snippet_hash": "75d345a78f84",
+            "display": "server/index.ts:92",
+            "snippet_hash_verified": true
+          },
+          {
+            "path": "server/index.ts",
+            "line_start": 96,
+            "line_end": 96,
+            "snippet_hash": "9b7206f3d09a",
+            "display": "server/index.ts:96",
+            "snippet_hash_verified": true
+          }
+        ],
+        "confidence": 0.55
+      },
+      {
+        "id": "claim_008",
+        "statement": "Server port is configured via environment variable",
+        "section": "How to Use the Target System",
+        "evidence": [
+          {
+            "path": "server/index.ts",
+            "line_start": 92,
+            "line_end": 92,
+            "snippet_hash": "75d345a78f84",
+            "display": "server/index.ts:92",
+            "snippet_hash_verified": true
+          },
+          {
+            "path": "server/index.ts",
+            "line_start": 96,
+            "line_end": 96,
+            "snippet_hash": "9b7206f3d09a",
+            "display": "server/index.ts:96",
+            "snippet_hash_verified": true
+          }
+        ],
+        "confidence": 0.55
+      },
+      {
+        "id": "claim_014",
+        "statement": "Replit run command: npm run dev",
+        "section": "How to Use the Target System",
+        "evidence": [
+          {
+            "path": ".replit",
+            "line_start": 2,
+            "line_end": 2,
+            "snippet_hash": "96fa2e5505e4",
+            "display": ".replit:2",
+            "snippet_hash_verified": true
+          },
+          {
+            "path": ".replit",
+            "line_start": 5,
+            "line_end": 5,
+            "snippet_hash": "550b970621c2",
+            "display": ".replit:5",
+            "snippet_hash_verified": true
+          }
+        ],
+        "confidence": 0.55
       }
     ],
     "Integration Surface": [
@@ -107,7 +179,31 @@
         "confidence": 0.5
       },
       {
-        "id": "claim_009",
+        "id": "claim_013",
+        "statement": "External API dependency: OpenAI",
+        "section": "Integration Surface",
+        "evidence": [
+          {
+            "path": "server/replit_integrations/audio/client.ts",
+            "line_start": 1,
+            "line_end": 1,
+            "snippet_hash": "1d3dd608c3bb",
+            "display": "server/replit_integrations/audio/client.ts:1",
+            "snippet_hash_verified": true
+          },
+          {
+            "path": "server/replit_integrations/audio/routes.ts",
+            "line_start": 3,
+            "line_end": 3,
+            "snippet_hash": "2f87d29d3b03",
+            "display": "server/replit_integrations/audio/routes.ts:3",
+            "snippet_hash_verified": true
+          }
+        ],
+        "confidence": 0.45
+      },
+      {
+        "id": "claim_017",
         "statement": "Database schema/migration files detected: drizzle.config.ts, server/db.ts, shared/schema.ts",
         "section": "Integration Surface",
         "evidence": [
@@ -129,6 +225,112 @@
           }
         ],
         "confidence": 0.4
+      }
+    ],
+    "Data & Security Posture": [
+      {
+        "id": "claim_009",
+        "statement": "System requires 3 secret(s): DATABASE_URL, AI_INTEGRATIONS_OPENAI_API_KEY, AI_INTEGRATIONS_OPENAI_BASE_URL",
+        "section": "Data & Security Posture",
+        "evidence": [
+          {
+            "path": "drizzle.config.ts",
+            "line_start": 3,
+            "line_end": 3,
+            "snippet_hash": "a19790628fbe",
+            "display": "drizzle.config.ts:3",
+            "snippet_hash_verified": true
+          },
+          {
+            "path": "server/replit_integrations/audio/client.ts",
+            "line_start": 10,
+            "line_end": 10,
+            "snippet_hash": "05da5f1b1281",
+            "display": "server/replit_integrations/audio/client.ts:10",
+            "snippet_hash_verified": true
+          },
+          {
+            "path": "server/replit_integrations/audio/client.ts",
+            "line_start": 11,
+            "line_end": 11,
+            "snippet_hash": "1f70e6a77d42",
+            "display": "server/replit_integrations/audio/client.ts:11",
+            "snippet_hash_verified": true
+          }
+        ],
+        "confidence": 0.55
+      },
+      {
+        "id": "claim_010",
+        "statement": "Secret \"DATABASE_URL\" is referenced in 4 file(s)",
+        "section": "Data & Security Posture",
+        "evidence": [
+          {
+            "path": "drizzle.config.ts",
+            "line_start": 3,
+            "line_end": 3,
+            "snippet_hash": "a19790628fbe",
+            "display": "drizzle.config.ts:3",
+            "snippet_hash_verified": true
+          },
+          {
+            "path": "drizzle.config.ts",
+            "line_start": 12,
+            "line_end": 12,
+            "snippet_hash": "1005be19f14a",
+            "display": "drizzle.config.ts:12",
+            "snippet_hash_verified": true
+          }
+        ],
+        "confidence": 0.5
+      },
+      {
+        "id": "claim_011",
+        "statement": "Secret \"AI_INTEGRATIONS_OPENAI_API_KEY\" is referenced in 3 file(s)",
+        "section": "Data & Security Posture",
+        "evidence": [
+          {
+            "path": "server/replit_integrations/audio/client.ts",
+            "line_start": 10,
+            "line_end": 10,
+            "snippet_hash": "05da5f1b1281",
+            "display": "server/replit_integrations/audio/client.ts:10",
+            "snippet_hash_verified": true
+          },
+          {
+            "path": "server/replit_integrations/chat/routes.ts",
+            "line_start": 6,
+            "line_end": 6,
+            "snippet_hash": "05da5f1b1281",
+            "display": "server/replit_integrations/chat/routes.ts:6",
+            "snippet_hash_verified": true
+          }
+        ],
+        "confidence": 0.5
+      },
+      {
+        "id": "claim_012",
+        "statement": "Secret \"AI_INTEGRATIONS_OPENAI_BASE_URL\" is referenced in 3 file(s)",
+        "section": "Data & Security Posture",
+        "evidence": [
+          {
+            "path": "server/replit_integrations/audio/client.ts",
+            "line_start": 11,
+            "line_end": 11,
+            "snippet_hash": "1f70e6a77d42",
+            "display": "server/replit_integrations/audio/client.ts:11",
+            "snippet_hash_verified": true
+          },
+          {
+            "path": "server/replit_integrations/chat/routes.ts",
+            "line_start": 7,
+            "line_end": 7,
+            "snippet_hash": "1f70e6a77d42",
+            "display": "server/replit_integrations/chat/routes.ts:7",
+            "snippet_hash_verified": true
+          }
+        ],
+        "confidence": 0.5
       }
     ]
   },
@@ -220,18 +422,18 @@
   ],
   "metrics": {
     "rci_reporting_completeness": {
-      "score": 0.3659,
+      "score": 0.5008,
       "label": "RCI \u2014 Reporting Completeness",
       "formula": "average(claims_coverage, unknowns_coverage, howto_completeness)",
       "components": {
-        "claims_coverage": 0.7778,
+        "claims_coverage": 0.8824,
         "unknowns_coverage": 0.0,
-        "howto_completeness": 0.32
+        "howto_completeness": 0.62
       },
       "interpretation": "Composite completeness of PTA reporting. NOT a security or structural visibility score."
     },
     "dci_v1_claim_visibility": {
-      "score": 0.7778,
+      "score": 0.8824,
       "label": "DCI_v1_claim_visibility",
       "formula": "verified_claims / total_claims",
       "interpretation": "Percent of claims with deterministic hash-verified evidence. This is claim-evidence visibility, NOT system surface visibility."
@@ -248,10 +450,20 @@
     "snippets": [
       "020435ddf436",
       "053150b640a7",
+      "05da5f1b1281",
+      "1005be19f14a",
+      "1d3dd608c3bb",
       "1f5c93c3d974",
+      "1f70e6a77d42",
+      "2f87d29d3b03",
       "3d66d6ea5af3",
       "50c86b7ed8ac",
+      "550b970621c2",
+      "75d345a78f84",
       "79d8bdf275d6",
+      "96fa2e5505e4",
+      "9b7206f3d09a",
+      "a19790628fbe",
       "a1f1a980b4b8",
       "f0d4a96fe7d6",
       "f7eebadd079d",
@@ -259,18 +471,24 @@
     ]
   },
   "summary": {
-    "total_files": 157,
-    "total_claims": 9,
-    "verified_claims": 7,
+    "total_files": 158,
+    "total_claims": 17,
+    "verified_claims": 15,
     "unknown_categories": 9,
     "verified_categories": 0
   },
   "coverage": {
-    "analyzed_files": 157,
-    "total_files_seen": 183,
+    "analyzed_files": 158,
+    "total_files_seen": 184,
     "skipped_files": 26,
     "skipped_types": [],
     "timeouts": [],
     "partial": true
+  },
+  "replit_profile": {
+    "is_replit": true,
+    "run_command": "npm run dev",
+    "language": "nodejs",
+    "port": null
   }
 }

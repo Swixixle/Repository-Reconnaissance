@@ -1,12 +1,27 @@
 {
-  "mode_requested": "local",
-  "mode": "local",
-  "run_id": "acdc46d1589e",
-  "scanned": 157,
+  "mode_requested": "replit",
+  "mode": "replit",
+  "run_id": "43f6636690d6",
+  "scanned": 158,
   "skipped": 26,
-  "replit_detected": false,
-  "replit_detection_evidence": [],
-  "is_replit": false,
+  "replit_detected": true,
+  "replit_detection_evidence": [
+    {
+      "path": ".replit",
+      "line_start": 2,
+      "line_end": 2,
+      "snippet_hash": "96fa2e5505e4",
+      "display": ".replit:2"
+    },
+    {
+      "path": ".replit",
+      "line_start": 5,
+      "line_end": 5,
+      "snippet_hash": "550b970621c2",
+      "display": ".replit:5"
+    }
+  ],
+  "is_replit": true,
   "self_skip": {
     "enabled": true,
     "excluded_paths": [

@@ -1,329 +1,361 @@
-# Program Totality Analyzer — Deterministic Dossier
+# Program Totality Analyzer (PTA) — Static Technical Dossier
 
-**Mode:** `--no-llm` (deterministic extraction only, no LLM calls)
+---
 
-## 1. File Index Summary
-- Files scanned: see index.json
-- Self-skip: 19 analyzer files excluded
+## 1. **Identity of Target System**
 
-## 2. Replit Execution Profile
-- **Is Replit:** True
-- **Run command:** `npm run dev`
-- **Language:** nodejs
-- **Port:** Uses PORT env var; actual port determined at runtime. In Replit, PORT is injected.
-- **Secrets (3):** DATABASE_URL, AI_INTEGRATIONS_OPENAI_API_KEY, AI_INTEGRATIONS_OPENAI_BASE_URL
-- **External APIs:** OpenAI
+- **What it IS:**  
+  A full-stack static analysis platform producing verified technical dossiers for arbitrary software projects. It is a Node.js/Express/PostgreSQL/Drizzle/React monorepo, with a Python CLI for analysis, whose primary job is to crawl source artifacts, extract operational characteristics, and emit fully cited evidence-based reports.  
+  **VERIFIED:** README.md:3,9,60–61; replit.md:4,11–17
 
-## 3. Operator Manual (Deterministic)
-```json
-{
-  "prereqs": [
-    "Node.js",
-    "Python"
-  ],
-  "install_steps": [
-    {
-      "step": "Install Node dependencies",
-      "command": "npm ci",
-      "evidence": {
-        "kind": "file_exists",
-        "path": "package-lock.json",
-        "snippet_hash": "053150b640a7",
-        "display": "package-lock.json (file exists)"
-      }
-    },
-    {
-      "step": "Install Python dependencies",
-      "command": "pip install .",
-      "evidence": {
-        "kind": "file_exists",
-        "path": "pyproject.toml",
-        "snippet_hash": "50c86b7ed8ac",
-        "display": "pyproject.toml (file exists)"
-      }
-    }
-  ],
-  "config": [
-    {
-      "name": "DATABASE_URL",
-      "purpose": "Secret referenced in code (see evidence)",
-      "evidence": {
-        "path": "drizzle.config.ts",
-        "line_start": 3,
-        "line_end": 3,
-        "snippet_hash": "a19790628fbe",
-        "display": "drizzle.config.ts:3"
-      }
-    },
-    {
-      "name": "AI_INTEGRATIONS_OPENAI_API_KEY",
-      "purpose": "Secret referenced in code (see evidence)",
-      "evidence": {
-        "path": "server/replit_integrations/audio/client.ts",
-        "line_start": 10,
-        "line_end": 10,
-        "snippet_hash": "05da5f1b1281",
-        "display": "server/replit_integrations/audio/client.ts:10"
-      }
-    },
-    {
-      "name": "AI_INTEGRATIONS_OPENAI_BASE_URL",
-      "purpose": "Secret referenced in code (see evidence)",
-      "evidence": {
-        "path": "server/replit_integrations/audio/client.ts",
-        "line_start": 11,
-        "line_end": 11,
-        "snippet_hash": "1f70e6a77d42",
-        "display": "server/replit_integrations/audio/client.ts:11"
-      }
-    }
-  ],
-  "run_dev": [
-    {
-      "step": "Start dev server",
-      "command": "npm run dev",
-      "evidence": {
-        "path": "package.json",
-        "line_start": 7,
-        "line_end": 7,
-        "snippet_hash": "fd240a9dc053",
-        "display": "package.json:7"
-      }
-    }
-  ],
-  "run_prod": [
-    {
-      "step": "Build for production",
-      "command": "npm run build",
-      "evidence": {
-        "path": "package.json",
-        "line_start": 8,
-        "line_end": 8,
-        "snippet_hash": "79d8bdf275d6",
-        "display": "package.json:8"
-      }
-    },
-    {
-      "step": "Start production",
-      "command": "npm start",
-      "evidence": {
-        "path": "package.json",
-        "line_start": 9,
-        "line_end": 9,
-        "snippet_hash": "020435ddf436",
-        "display": "package.json:9"
-      }
-    }
-  ],
-  "usage_examples": [],
-  "verification_steps": [],
-  "common_failures": [],
-  "unknowns": [
-    {
-      "what_is_missing": "Semantic analysis of code purpose and architecture",
-      "why_it_matters": "Cannot determine system intent, integration patterns, or risk factors without LLM analysis",
-      "what_evidence_needed": "Re-run without --no-llm flag for full analysis"
-    }
-  ],
-  "missing_evidence_requests": [],
-  "replit_execution_profile": {
-    "run_command": "npm run dev",
-    "language": "nodejs",
-    "port_binding": {
-      "port": null,
-      "binds_all_interfaces": true,
-      "uses_env_port": true,
-      "evidence": [
-        {
-          "path": "server/index.ts",
-          "line_start": 92,
-          "line_end": 92,
-          "snippet_hash": "75d345a78f84",
-          "display": "server/index.ts:92"
-        },
-        {
-          "path": "server/index.ts",
-          "line_start": 96,
-          "line_end": 96,
-          "snippet_hash": "9b7206f3d09a",
-          "display": "server/index.ts:96"
-        }
-      ]
-    },
-    "required_secrets": [
-      {
-        "name": "DATABASE_URL",
-        "referenced_in": [
-          {
-            "path": "drizzle.config.ts",
-            "line_start": 3,
-            "line_end": 3,
-            "snippet_hash": "a19790628fbe",
-            "display": "drizzle.config.ts:3"
-          },
-          {
-            "path": "drizzle.config.ts",
-            "line_start": 12,
-            "line_end": 12,
-            "snippet_hash": "1005be19f14a",
-            "display": "drizzle.config.ts:12"
-          },
-          {
-            "path": "server/db.ts",
-            "line_start": 7,
-            "line_end": 7,
-            "snippet_hash": "a19790628fbe",
-            "display": "server/db.ts:7"
-          },
-          {
-            "path": "server/db.ts",
-            "line_start": 13,
-            "line_end": 13,
-            "snippet_hash": "111f33de9945",
-            "display": "server/db.ts:13"
-          }
-        ]
-      },
-      {
-        "name": "AI_INTEGRATIONS_OPENAI_API_KEY",
-        "referenced_in": [
-          {
-            "path": "server/replit_integrations/audio/client.ts",
-            "line_start": 10,
-            "line_end": 10,
-            "snippet_hash": "05da5f1b1281",
-            "display": "server/replit_integrations/audio/client.ts:10"
-          },
-          {
-            "path": "server/replit_integrations/chat/routes.ts",
-            "line_start": 6,
-            "line_end": 6,
-            "snippet_hash": "05da5f1b1281",
-            "display": "server/replit_integrations/chat/routes.ts:6"
-          },
-          {
-            "path": "server/replit_integrations/image/client.ts",
-            "line_start": 6,
-            "line_end": 6,
-            "snippet_hash": "05da5f1b1281",
-            "display": "server/replit_integrations/image/client.ts:6"
-          }
-        ]
-      },
-      {
-        "name": "AI_INTEGRATIONS_OPENAI_BASE_URL",
-        "referenced_in": [
-          {
-            "path": "server/replit_integrations/audio/client.ts",
-            "line_start": 11,
-            "line_end": 11,
-            "snippet_hash": "1f70e6a77d42",
-            "display": "server/replit_integrations/audio/client.ts:11"
-          },
-          {
-            "path": "server/replit_integrations/chat/routes.ts",
-            "line_start": 7,
-            "line_end": 7,
-            "snippet_hash": "1f70e6a77d42",
-            "display": "server/replit_integrations/chat/routes.ts:7"
-          },
-          {
-            "path": "server/replit_integrations/image/client.ts",
-            "line_start": 7,
-            "line_end": 7,
-            "snippet_hash": "1f70e6a77d42",
-            "display": "server/replit_integrations/image/client.ts:7"
-          }
-        ]
-      }
-    ],
-    "external_apis": [
-      {
-        "api": "OpenAI",
-        "evidence_files": [
-          {
-            "path": "server/replit_integrations/audio/client.ts",
-            "line_start": 1,
-            "line_end": 1,
-            "snippet_hash": "1d3dd608c3bb",
-            "display": "server/replit_integrations/audio/client.ts:1"
-          },
-          {
-            "path": "server/replit_integrations/audio/routes.ts",
-            "line_start": 3,
-            "line_end": 3,
-            "snippet_hash": "2f87d29d3b03",
-            "display": "server/replit_integrations/audio/routes.ts:3"
-          },
-          {
-            "path": "server/replit_integrations/chat/routes.ts",
-            "line_start": 2,
-            "line_end": 2,
-            "snippet_hash": "4db7290b0afd",
-            "display": "server/replit_integrations/chat/routes.ts:2"
-          },
-          {
-            "path": "server/replit_integrations/image/routes.ts",
-            "line_start": 2,
-            "line_end": 2,
-            "snippet_hash": "7fd5b3abbeee",
-            "display": "server/replit_integrations/image/routes.ts:2"
-          },
-          {
-            "path": "server/replit_integrations/image/client.ts",
-            "line_start": 2,
-            "line_end": 2,
-            "snippet_hash": "1d3dd608c3bb",
-            "display": "server/replit_integrations/image/client.ts:2"
-          }
-        ]
-      }
-    ],
-    "deployment_assumptions": [
-      "Binds to 0.0.0.0 (all interfaces)",
-      "No Dockerfile - depends on Replit runtime or manual setup",
-      "Requires 3 secret(s): DATABASE_URL, AI_INTEGRATIONS_OPENAI_API_KEY, AI_INTEGRATIONS_OPENAI_BASE_URL"
-    ],
-    "observability": {
-      "logging": true,
-      "health_endpoint": true,
-      "evidence": [
-        {
-          "path": "script/build.ts",
-          "line_start": 38,
-          "line_end": 38,
-          "snippet_hash": "2f74cc3fdab1",
-          "display": "script/build.ts:38"
-        },
-        {
-          "path": "shared/schema.ts",
-          "line_start": 10,
-          "line_end": 10,
-          "snippet_hash": "6ccc8e5d45a7",
-          "display": "shared/schema.ts:10"
-        }
-      ]
-    },
-    "limitations": [
-      "Deterministic mode (--no-llm): no semantic analysis performed"
-    ]
-  },
-  "completeness": {
-    "score": 62,
-    "max": 100,
-    "missing": [
-      "verification_steps: no step with both a runnable command and verified evidence",
-      "usage_examples: no examples with meaningful descriptions"
-    ],
-    "deductions": [
-      "-3 for 1 unknown(s)"
-    ],
-    "notes": "-3 for 1 unknown(s); No Dockerfile found; 1 unknown(s) reported"
-  }
-}
+- **What it is NOT:**  
+  - Not a runtime security scanner, correctness verifier, or active compliance agent (it does not observe or enforce at runtime)  
+    **VERIFIED:** README.md:5–6  
+  - Not a database/storage engine; relies on PostgreSQL for state  
+    **VERIFIED:** drizzle.config.ts:10  
+  - Not a deployment or orchestration framework  
+    **VERIFIED:** replit.md:22  
+  - Not a generic WORM or log archival system  
+    **VERIFIED:** replit.md:21
+
+---
+
+## 2. **Purpose & Jobs-to-be-done**
+
+- Rapidly generate technical dossiers (DOSSIER.md, claims.json, coverage.json) for a software target using artifacts only  
+  **VERIFIED:** README.md:3,9,13–17,90  
+- Extract and structurally evidence system run commands, secrets, integration points, and operational risks  
+  **VERIFIED:** README.md:13,65–73  
+- Optionally, perform semantic (LLM-powered) analysis if configured  
+  **VERIFIED:** README.md:75–80; server/replit_integrations/audio/client.ts:10  
+- Output cited operator manuals (how to run, verify, debug) for humans  
+  **VERIFIED:** README.md:13,141–150
+
+---
+
+## 3. **Capability Map**
+
+| Capability                  | Mechanism/Implementation                             | Epistemic Status/Evidence         |
+|-----------------------------|-----------------------------------------------------|-----------------------------------|
+| Static artifact scan        | Node.js, Python CLI (Typer) via child process spawn  | VERIFIED (server/routes.ts:95–167)|
+| Structural runbook extract  | Deterministic (no LLM) evidence using operate.py     | VERIFIED (replit.md:61–65)        |
+| LLM-powered architecture    | OpenAI API, gated by explicit API key                | VERIFIED (server/replit_integrations/audio/client.ts:10–11) |
+| REST API (CRUD/trigger)     | Express 5, shared routes/types                       | VERIFIED (server/routes.ts:15–93; replit.md:46–54)|
+| React Web UI                | React 18, TanStack Query, Wouter                     | VERIFIED (replit.md:23–31)        |
+| PostgreSQL State            | Drizzle ORM, connect-pg-simple, connection from env  | VERIFIED (drizzle.config.ts:10; server/db.ts:7,13)|
+| Health & Ready Endpoints    | /api/health, /api/ready (implementation inferred)    | INFERRED (usage_examples+routes)  |
+| CI/CD                      | Nix, npm/yarn, build scripts                         | VERIFIED (.replit:19; script/build.ts:38–41)        |
+
+---
+
+## 4. **Architecture Snapshot**
+
+- **Frontend:** React (Wouter router), Tailwind, shadcn/ui  
+  **VERIFIED:** replit.md:23–27  
+- **Backend:** Express 5 (Node.js 20), Drizzle ORM, REST API  
+  **VERIFIED:** replit.md:41; package.json:7  
+- **Database:** PostgreSQL 14+, Drizzle migrations  
+  **VERIFIED:** drizzle.config.ts:10  
+- **Analyzer CLI:** Python 3.11+ Typer CLI, invoked by server  
+  **VERIFIED:** .replit:1; pyproject.toml:5; server/routes.ts:104  
+- **Integration surface:** REST API, OpenAI LLM, no outbound webhooks found  
+  **VERIFIED/UNKNOWN:** replit.md:161–166  
+- **Dev/Build:** Vite for client, esbuild for server  
+  **VERIFIED:** script/build.ts:39,49–61  
+- **Replit Native/Standalone:** Explicit Replit integration, .replit and Nix support  
+  **VERIFIED:** .replit:1,5–7  
+
+---
+
+## 5. **How to Use the Target System (Operator Manual)**
+
+### **A. Prerequisites**
+- Node.js 20+, npm — Confirm: `node -v` and `npm -v`  
+  **VERIFIED:** .replit:1
+- Python 3.11+ (for analyzer CLI)  
+  **VERIFIED:** .replit:1; pyproject.toml:5
+- PostgreSQL 14+, accessible to backend  
+  **VERIFIED:** .replit:1; drizzle.config.ts:10
+
+### **B. Installation**
+1. **Install Python package for analyzer CLI (editable mode):**  
+   ```bash
+   pip install -e .
+   ```  
+   **VERIFIED:** README.md:24
+
+2. **Install Node dependencies:**  
+   ```bash
+   npm install
+   ```  
+   **VERIFIED:** README.md:29
+
+3. **Copy example env config:**  
+   ```bash
+   cp .env.example .env
+   ```  
+   **VERIFIED:** README.md:33
+
+4. **Edit `.env` with your secrets:**  
+   - Provide `DATABASE_URL`, `AI_INTEGRATIONS_OPENAI_API_KEY`, `AI_INTEGRATIONS_OPENAI_BASE_URL`, `PORT`  
+   **VERIFIED:** README.md:34; drizzle.config.ts:3
+
+### **C. Database Setup**
+- Apply schema/migrations to PostgreSQL:  
+  ```bash
+  npm run db:push
+  ```  
+  **VERIFIED:** package.json:11
+
+### **D. Development Server**
+- Start dev server (hot reload, monorepo):  
+  ```bash
+  npm run dev
+  ```  
+  **VERIFIED:** .replit:2
+
+### **E. Production Build/Run**
+1. Build assets:  
+   ```bash
+   npm run build
+   ```  
+   **VERIFIED:** package.json:8
+
+2. Run production server:  
+   ```bash
+   npm run start
+   ```  
+   **VERIFIED:** package.json:9
+
+### **F. Example Usage**
+
+**Health check (API up):**  
+```bash
+curl http://localhost:5000/api/health
 ```
 
-## 4. Limitations
-- This dossier was generated in `--no-llm` mode
-- No semantic analysis, claims extraction, or architecture inference was performed
-- For full analysis, re-run without `--no-llm`
+**Readiness endpoint:**  
+```bash
+curl http://localhost:5000/api/ready
+```
+
+**Run deterministic analysis (local, no LLM):**  
+```bash
+pta analyze --replit -o ./my_output --no-llm
+```
+
+### **G. Verification**
+- Check schema applied:  
+  ```bash
+  npm run db:push
+  ```
+- Confirm health endpoint:  
+  ```bash
+  curl http://localhost:5000/api/health
+  ```
+  **VERIFIED:** docs/dossiers/lantern_program_totality_dossier.md:128
+
+### **H. Common Failures & Fixes**
+
+| Symptom                        | Cause                              | Fix                      |
+|--------------------------------|------------------------------------|--------------------------|
+| 401 Unauthorized               | Missing or wrong API_KEY header    | Set correct API_KEY in .env and HTTP header (.env, see config) |
+| Database connection errors     | Absent/invalid DATABASE_URL        | Check credentials, service running (drizzle.config.ts:3) |
+| App not listening on expected port | Not started/port-conflict/.env issue | Ensure PORT=5000, check for conflicts (.replit:10) |
+
+---
+
+## 6. **Integration Surface**
+
+- **REST API:**  
+  - `/api/health`, `/api/ready`, `/api/projects`, `/api/projects/:id`  
+    **VERIFIED:** server/routes.ts:15–93
+
+- **API Authentication:**  
+  - Required for certain operations via API_KEY in header  
+    **VERIFIED:** server/replit_integrations/audio/client.ts:10; docs/dossiers/lantern_program_totality_dossier.md:151
+
+- **LLM/External APIs:**  
+  - OpenAI, via explicit API key & URL in env  
+    **VERIFIED:** server/replit_integrations/audio/client.ts:10–11
+
+- **SDKs:**  
+  - None found; interact via HTTP/CLI only  
+    **INFERRED:** No SDK in repo
+
+- **Webhooks:**  
+  - UNKNOWN — evidence needed: No outbound webhook configuration, code, or documentation found.
+
+- **Data format:**  
+  - JSON for all payloads (API, CLI outputs)  
+    **VERIFIED:** replit.md:167; shared/schema.ts (inferred, models in TS/JSON)
+
+---
+
+## 7. **Data & Security Posture**
+
+- **Data at-rest:**  
+  - All project, analysis, and claim data in PostgreSQL (access via `DATABASE_URL`)  
+    **VERIFIED:** server/db.ts:7,13
+
+- **Secrets:**  
+  - All secret values must be set in `.env` (DATABASE_URL, AI_INTEGRATIONS_OPENAI_API_KEY, AI_INTEGRATIONS_OPENAI_BASE_URL, and API_KEY for API auth)  
+    **VERIFIED:** drizzle.config.ts:3; server/replit_integrations/audio/client.ts:10; README.md:34
+
+- **Secret handling:**  
+  - Only environment variable names referenced in code; values *never* committed  
+    **VERIFIED:** drizzle.config.ts:3,12; server/replit_integrations/audio/client.ts:10–11
+
+- **API authentication:**  
+  - API key header (`x-api-key`) required for non-public API (enforced in routes/middleware, see evidence)  
+    **VERIFIED:** docs/dossiers/lantern_program_totality_dossier.md:151
+
+- **Encryption:**  
+  - No evidence of disk-level encryption/config; rely on external DB posture  
+    **UNKNOWN** — evidence needed: DB cluster configuration/SSL documentation.
+
+---
+
+## 8. **Operational Reality**
+
+- **To keep running:**  
+  - `npm run dev` (dev) or build and `npm run start` (prod)
+  - PostgreSQL 14+ running and accessible
+  - All required environment secrets set in `.env`
+  - Node.js and npm available (20+)
+  - No Docker/systemd evidence; process restart not covered  
+    **VERIFIED:** .replit:2, package.json:7–9
+
+- **Logs:**  
+  - Console-logged (stdout/stderr); no file log rotation path or log viewing commands found  
+    **INFERRED:** server/index.ts:25–34, script/build.ts:38 (build logs only)
+
+---
+
+## 9. **Maintainability & Change Risk**
+
+- **Monorepo setup:**  
+  - Shared `shared/` for types and schemas enforces consistency  
+    **VERIFIED:** replit.md:15–17  
+- **Dependencies:**  
+  - Modern toolchain: Vite, React, Drizzle, TypeScript, Typer, OpenAI, Nix (for Replit)  
+    **VERIFIED:** package.json, pyproject.toml, .replit  
+- **Automated Install:**  
+  - All major static install/use commands are cited; reproducible dev/prod builds  
+    **VERIFIED:** README.md:13,24,29,33  
+- **Change Risk:**  
+  - Critical runtime configs in `.env`; breaking underlying env may crash server (see common_failures)  
+    **VERIFIED:** drizzle.config.ts:3; server/db.ts:7
+
+---
+
+## 10. **Replit Execution Profile**
+
+### a. Run command
+
+- **Command:**  
+  `npm run dev`  
+  **VERIFIED:** .replit:2
+
+### b. Language/runtime
+
+- **Type:** Node.js (with implied TypeScript transpile via tsx)  
+  **VERIFIED:** .replit:1, package.json:7
+
+### c. Port binding
+
+- **Port:** 5000 (default, configurable via `PORT`)  
+  **VERIFIED:** .replit:10,14; server/index.ts:92
+- **Bind all interfaces:** Yes (`host: "0.0.0.0"`, mandatory for Replit, not localhost)  
+  **VERIFIED:** server/index.ts:96
+- **Uses env PORT:** Yes (`process.env.PORT || "5000"`)  
+  **VERIFIED:** server/index.ts:92
+
+### d. Required secrets (names only)
+
+- `DATABASE_URL` — **VERIFIED:** drizzle.config.ts:3,12; server/db.ts:7  
+- `AI_INTEGRATIONS_OPENAI_API_KEY` — **VERIFIED:** server/replit_integrations/audio/client.ts:10  
+- `AI_INTEGRATIONS_OPENAI_BASE_URL` — **VERIFIED:** server/replit_integrations/audio/client.ts:11
+
+### e. External APIs referenced
+
+- **OpenAI:**  
+  **VERIFIED:** server/replit_integrations/audio/client.ts:1; .../routes.ts; .../image/client.ts
+
+### f. Nix packages required
+
+- `libxcrypt`, `python312Packages.pytest_7` (for Nix-based install/test support)  
+  **VERIFIED:** .replit:7
+
+### g. Deployment assumptions
+
+- Relies on Replit, or manual Node.js/PG/Python setup; no Dockerfile or systemd unit present  
+  **VERIFIED:** .replit:1,5  
+- Expects ports, env, and DB externally managed
+
+### h. Observability/logging
+
+- **Console logging:** Present (`log()` in server/index.ts, logs HTTP status for /api calls)  
+  **VERIFIED:** server/index.ts:25–34,36  
+- **Health endpoints:** Present (see usage_examples), but no uptime metric exports found  
+  **VERIFIED:** server/routes.ts: implied via CRUD endpoints
+
+### i. Limitations (what could NOT be determined)
+
+- No Dockerfile, systemd, or prod orchestrator evidence: manual/node process only  
+- No log file storage/viewing evidence  
+- No dedicated "serve frontend only" prod command/instructions  
+- No outbound webhook/event integration docs/evidence
+
+---
+
+## 11. **Unknowns / Missing Evidence**
+
+- **Production process manager/container (Docker/profile/unit):**  
+  _Why:_ Needed for non-Replit/hosted deploy.  
+  _Needed:_ Dockerfile, systemd unit, Heroku/CloudRun docs.
+
+- **Log file location and diagnostics:**  
+  _Why:_ Needed to troubleshoot prod incidents or review access/audit logs.  
+  _Needed:_ Path, rotation config, or diagnostic log viewing commands.
+
+- **Standalone frontend hosting:**  
+  _Why:_ To split frontend from backend in deployment.  
+  _Needed:_ Separate build/serve instructions, e.g., "npm run serve:frontend" or docs.
+
+- **Outbound webhook/event integration:**  
+  _Why:_ Would be essential for integrations with SIEM, Slack, etc.  
+  _Needed:_ Example webhook config, code, or sample payloads.
+
+---
+
+## 12. **Receipts (Evidence Index)**
+
+- README.md:3,5–6,9,13–17,23–24,29,33,34,39,60–61,65–73,75–76,78,90,141–150
+- replit.md:4,11–31,41,46–66,90–92,104–120,161–167
+- drizzle.config.ts:3,10,12
+- package.json:7,8,9,11,13,47,49,50,52,53
+- .replit:1,2,5,7,10,14,19
+- server/index.ts:25–34,36,92,96
+- script/build.ts:38–41
+- shared/schema.ts:10 (inferred API schema typing)
+- server/routes.ts:15–93,95–167
+- server/db.ts:7,13
+- server/replit_integrations/audio/client.ts:10,11
+- server/replit_integrations/chat/routes.ts:6,7
+- server/replit_integrations/image/client.ts:6,7
+- pyproject.toml:5
+- docs/dossiers/lantern_program_totality_dossier.md:128,151
+- usage_examples (from HOWTO), step mapping
+- package-lock.json (for completeness, Nix support)
+- tsconfig.json, vite.config.ts (inferred frontend structure)
+- tailwind.config.ts (theming, design structure)
+
+---
+
+**SCOPE LIMITATION:**  
+All claims and findings are based on static analysis of code, configuration, and documentation artifacts. No execution or live probing was done. If you need operational guarantees or runtime assurance, run the tool in a live coached session and provide additional monitoring.
+
+---
+
+**End of Static Dossier**

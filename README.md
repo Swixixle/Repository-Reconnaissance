@@ -10,7 +10,8 @@ Given a software project (GitHub repo, local folder, or Replit workspace), the a
 
 | File | Contents |
 |------|----------|
-| `target_howto.json` | Operator manual: prerequisites, install steps, config, dev/prod run commands, Replit execution profile |
+| `operate.json` | Operator dashboard: boot commands, integration points, deployment config, readiness scores, gaps with severity. Deterministic, evidence-bound. Every item is EVIDENCED, INFERRED, or UNKNOWN. |
+| `target_howto.json` | Legacy: evidence-scoped run steps. Prefer `operate.json` for operator workflows. |
 | `claims.json` | Verifiable claims about the system, each with file:line evidence and confidence scores |
 | `coverage.json` | Scan metadata: files scanned, files skipped, Replit detection evidence |
 | `replit_profile.json` | Replit-specific: port binding, secrets, external APIs, observability (only in Replit mode) |
@@ -63,13 +64,15 @@ Skip all LLM calls and produce only deterministic, structurally-extracted output
 pta analyze --replit --no-llm -o ./output
 ```
 
-This mode requires no API keys and produces reproducible results. It extracts:
+This mode requires no API keys and produces reproducible results. It generates `operate.json` and readiness scoring without any LLM involvement. It extracts:
 - Package scripts (dev, build, start)
 - Lockfile-based install commands
 - Environment variable references (names only, never values)
 - Port binding configuration
 - External API usage
 - Replit platform detection
+- Operational gaps with severity ratings
+- Readiness scores (boot, integrate, deploy)
 
 ### With LLM Analysis
 
@@ -117,6 +120,13 @@ For file-existence evidence (e.g., lockfile detection):
 }
 ```
 
+### Gap Severity
+
+Operational gaps in `operate.json` include a severity rating:
+- **high** — blocks boot or core execution
+- **medium** — impacts deployment maturity
+- **low** — best-practice or observability improvements
+
 ### Verification
 
 Snippet hashes are re-checked against source files: the analyzer re-reads the cited line range, strips whitespace, hashes the result, and confirms it matches the claimed hash. Claims that fail hash verification are capped at confidence 0.20 and marked `"status": "unverified"`.
@@ -138,9 +148,22 @@ Lines are stripped (trimmed) before hashing. This normalizes indentation differe
 
 ## Output Files
 
-### `target_howto.json`
+### `operate.json`
 
-Operator manual with:
+Operator dashboard model with:
+- `boot` -- install, dev, prod commands and port bindings, each with evidence tier
+- `integrate` -- endpoints, env vars, auth mechanisms with evidence
+- `deploy` -- Docker, platform hints, CI/CD, build commands with evidence
+- `readiness` -- scores (0-100) for boot, integrate, deploy categories with reasons
+- `gaps` -- operational gaps with severity (high/medium/low), rank, and action
+- `runbooks` -- numbered step sequences for local_dev, production, and integration
+- `snapshot` -- observability, migrations, and architectural metadata
+
+All items carry a status of EVIDENCED, INFERRED, or UNKNOWN. EVIDENCED items include file:line references and SHA-256 snippet hashes. UNKNOWN items include an `unknown_reason`.
+
+### `target_howto.json` (legacy)
+
+Legacy operator manual. Prefer `operate.json` for operator workflows. Contains:
 - `prereqs` -- required runtimes
 - `install_steps` -- with commands and evidence
 - `config` -- environment variables with file:line references
