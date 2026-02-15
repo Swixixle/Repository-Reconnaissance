@@ -27,6 +27,7 @@ This script will:
 4. ✓ Write credentials securely to `~/.git-credentials`
 5. ✓ Clear any stale git locks
 6. ✓ Test authentication with `git fetch`
+7. ✓ Display repository status
 
 If successful, you can now use `git fetch`, `git push`, and other git operations normally.
 
@@ -37,11 +38,14 @@ If you prefer to set up authentication manually, follow these steps:
 ### Step 0: Verify Token
 
 ```bash
-# Should print "True"
-python -c "import os; print('GITHUB_TOKEN' in os.environ)"
+# Should print "Token exists"
+[[ -n "${GITHUB_TOKEN:-}" ]] && echo "Token exists" || echo "Token not found"
+
+# Show first 4 characters for verification
+echo "${GITHUB_TOKEN:0:4}..."
 ```
 
-If this prints `False`, add `GITHUB_TOKEN` to Replit Secrets first.
+If this shows "Token not found", add `GITHUB_TOKEN` to Replit Secrets first.
 
 ### Step 1: Clean Remote URL
 
@@ -104,7 +108,7 @@ git status
 
 1. **Verify token is set:**
    ```bash
-   python -c "import os; print(os.getenv('GITHUB_TOKEN','')[:4] + '...')"
+   echo "${GITHUB_TOKEN:0:4}..."
    ```
    This should print the first 4 characters of your token followed by `...`
 
@@ -127,7 +131,7 @@ git status
    git remote -v
    ls -la ~/.git-credentials
    git config --global --get credential.helper
-   python -c "import os; print(os.getenv('GITHUB_TOKEN','')[:4] + '...' )"
+   echo "${GITHUB_TOKEN:0:4}..."
    ```
 
 5. **Re-run setup:**

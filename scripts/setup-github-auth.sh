@@ -9,10 +9,10 @@ echo
 
 # 0) Sanity: confirm token exists in env
 echo "Step 0: Checking for GITHUB_TOKEN in environment..."
-if python -c "import os; print('GITHUB_TOKEN' in os.environ)" | grep -q "True"; then
+if [[ -n "${GITHUB_TOKEN:-}" ]]; then
   echo "✓ GITHUB_TOKEN found in environment"
   # Show first 4 chars for verification (never show full token)
-  echo "  Token preview: $(python -c "import os; t=os.getenv('GITHUB_TOKEN',''); print(t[:4] + '...' if len(t) > 4 else 'ERROR: Token too short')")"
+  echo "  Token preview: ${GITHUB_TOKEN:0:4}..."
 else
   echo "✗ ERROR: GITHUB_TOKEN not found in environment"
   echo "  Please add GITHUB_TOKEN to Replit Secrets (lock icon in sidebar)"
@@ -87,7 +87,7 @@ else
   git config --global --get credential.helper || echo "    (not configured)"
   echo
   echo "  Token preview:"
-  python -c "import os; t=os.getenv('GITHUB_TOKEN',''); print('  ' + t[:4] + '...' if len(t) > 4 else '  ERROR: Token not found or too short')"
+  echo "  ${GITHUB_TOKEN:0:4}..."
   exit 1
 fi
 echo
