@@ -22,6 +22,26 @@ function logEvent(projectId: number, event: string, detail?: Record<string, unkn
   appendFileSync(LOG_FILE, JSON.stringify(entry) + "\n");
 }
 
+function logAdminEvent(event: string, detail?: Record<string, unknown>) {
+  logEvent(0, event, detail);
+}
+
+function requireDevAdmin(req: any, res: any): boolean {
+  if (process.env.NODE_ENV === "production") {
+    res.status(403).json({ error: "Forbidden" });
+    return false;
+  }
+  const required = process.env.ADMIN_KEY;
+  if (required && required.length > 0) {
+    const provided = String(req.headers["x-admin-key"] || "");
+    if (provided !== required) {
+      res.status(401).json({ error: "Unauthorized" });
+      return false;
+    }
+  }
+  return true;
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -108,28 +128,31 @@ export async function registerRoutes(
     res.type("text/markdown").send(readFileSync(p, "utf8"));
   });
 
-  app.get("/api/admin/analyzer-log", async (_req, res) => {
-    if (process.env.NODE_ENV === "production") {
-      res.status(403).json({ message: "Not available in production" });
-      return;
-    }
+  app.get("/api/admin/analyzer-log", async (req, res) => {
+    if (!requireDevAdmin(req, res)) return;
     try {
-      const raw = await fs.readFile(LOG_FILE, "utf-8").catch(() => "");
-      const entries = raw.trim().split("\n").filter(Boolean).map((l) => JSON.parse(l));
-      res.json(entries);
+      if (!existsSync(LOG_FILE)) return res.json([]);
+      const raw = await fs.readFile(LOG_FILE, "utf-8");
+      const lines = raw.split("\n").filter(Boolean);
+      const parsed = lines.map((l) => {
+        try { return JSON.parse(l); } catch { return { parse_error: true, line: l }; }
+      });
+      res.json(parsed);
     } catch (err) {
-      res.json([]);
+      res.status(500).json({ error: "failed_to_read_log" });
     }
   });
 
-  app.post("/api/admin/analyzer-log/clear", async (_req, res) => {
-    if (process.env.NODE_ENV === "production") {
-      return res.status(403).json({ error: "Forbidden" });
-    }
+  app.post("/api/admin/analyzer-log/clear", async (req, res) => {
+    if (!requireDevAdmin(req, res)) return;
     try {
-      await fs.rm(LOG_FILE, { force: true });
       await fs.mkdir(LOG_DIR, { recursive: true });
+      await fs.rm(LOG_FILE, { force: true });
       await fs.writeFile(LOG_FILE, "", "utf8");
+      logAdminEvent("log_cleared", {
+        ip: req.ip,
+        ua: String(req.headers["user-agent"] || ""),
+      });
       return res.json({ ok: true });
     } catch (err) {
       console.error("Failed to clear analyzer log:", err);
@@ -138,14 +161,15 @@ export async function registerRoutes(
   });
 
   app.post("/api/admin/reset-analyzer", async (req, res) => {
-    if (process.env.NODE_ENV === "production") {
-      res.status(403).json({ message: "Not available in production" });
-      return;
-    }
+    if (!requireDevAdmin(req, res)) return;
     try {
       await storage.resetAnalyzerLogbook();
       await fs.rm(path.resolve(process.cwd(), "out"), { recursive: true, force: true });
       await fs.mkdir(path.resolve(process.cwd(), "out"), { recursive: true });
+      logAdminEvent("reset_analyzer", {
+        ip: req.ip,
+        ua: String(req.headers["user-agent"] || ""),
+      });
       console.log("[Admin] Analyzer logbook + DB + out/ reset");
       res.json({ ok: true });
     } catch (err) {

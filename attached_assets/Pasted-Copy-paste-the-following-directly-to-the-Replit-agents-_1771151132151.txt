@@ -1,0 +1,203 @@
+Copy-paste the following directly to the Replit agents.
+
+Do not summarize. Do not explain. Implement exactly.
+
+---
+
+# TASK: Harden Admin Endpoints + Audit Log Clear
+
+You will implement:
+
+1. Dev-only + ADMIN_KEY guard for all `/api/admin/*` routes
+2. Auditable `log_cleared` event when clearing the analyzer log
+3. Guard enforcement on:
+
+   * GET `/api/admin/analyzer-log`
+   * POST `/api/admin/analyzer-log/clear`
+   * POST `/api/admin/reset-analyzer`
+
+You will modify **server/routes.ts only**.
+
+---
+
+## 1️⃣ Add Admin Guard Helper
+
+At the top of `server/routes.ts`, below imports and constants, add:
+
+```ts
+function requireDevAdmin(req: any, res: any): boolean {
+  // Block in production
+  if (process.env.NODE_ENV === "production") {
+    res.status(403).json({ error: "Forbidden" });
+    return false;
+  }
+
+  // Optional key gate in dev
+  const required = process.env.ADMIN_KEY;
+  if (required && required.length > 0) {
+    const provided = String(req.headers["x-admin-key"] || "");
+    if (provided !== required) {
+      res.status(401).json({ error: "Unauthorized" });
+      return false;
+    }
+  }
+
+  return true;
+}
+```
+
+---
+
+## 2️⃣ Add Admin Log Wrapper
+
+Below existing `logEvent(...)` helper, add:
+
+```ts
+function logAdminEvent(event: string, detail?: Record<string, unknown>) {
+  // projectId = 0 reserved for system/admin events
+  logEvent(0, event, detail);
+}
+```
+
+Do not change existing `logEvent`.
+
+---
+
+## 3️⃣ Protect GET /api/admin/analyzer-log
+
+Find:
+
+```ts
+app.get("/api/admin/analyzer-log", ...
+```
+
+Modify handler to begin with:
+
+```ts
+if (!requireDevAdmin(req, res)) return;
+```
+
+Do not alter the rest of the logic.
+
+---
+
+## 4️⃣ Replace POST /api/admin/analyzer-log/clear Handler
+
+Replace the entire handler with:
+
+```ts
+app.post("/api/admin/analyzer-log/clear", async (req, res) => {
+  if (!requireDevAdmin(req, res)) return;
+
+  try {
+    const logDir = LOG_DIR;
+    const logFile = LOG_FILE;
+
+    await fs.mkdir(logDir, { recursive: true });
+    await fs.rm(logFile, { force: true });
+    await fs.writeFile(logFile, "", "utf8");
+
+    // Auditable marker
+    logAdminEvent("log_cleared", {
+      ip: req.ip,
+      ua: String(req.headers["user-agent"] || "")
+    });
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("Failed to clear analyzer log:", err);
+    return res.status(500).json({ ok: false });
+  }
+});
+```
+
+---
+
+## 5️⃣ Protect POST /api/admin/reset-analyzer
+
+Find:
+
+```ts
+app.post("/api/admin/reset-analyzer", ...
+```
+
+At top of handler add:
+
+```ts
+if (!requireDevAdmin(req, res)) return;
+```
+
+Immediately before returning success, add:
+
+```ts
+logAdminEvent("reset_analyzer", {
+  ip: req.ip,
+  ua: String(req.headers["user-agent"] || "")
+});
+```
+
+Do not change existing reset logic.
+
+---
+
+## 6️⃣ Do Not Touch
+
+* runAnalysis
+* finishOnce
+* logEvent
+* storage layer
+* analyzer CLI
+* timeout logic
+
+This task modifies **admin security only**.
+
+---
+
+## 7️⃣ Required Behavior After Patch
+
+When `ADMIN_KEY` is set:
+
+* Requests without `x-admin-key` → 401
+* Wrong key → 401
+* Correct key → allowed
+
+When `NODE_ENV === "production"`:
+
+* All `/api/admin/*` → 403
+
+After clearing log:
+
+* `analyzer.ndjson` exists
+* File contains a `log_cleared` event
+* DB untouched
+
+---
+
+## 8️⃣ Verification Commands (Agents Must Confirm)
+
+After implementation, run:
+
+```bash
+curl -i http://localhost:5000/api/admin/analyzer-log
+```
+
+Expect 401 if ADMIN_KEY set.
+
+```bash
+curl -s -H "x-admin-key: $ADMIN_KEY" http://localhost:5000/api/admin/analyzer-log | head
+```
+
+```bash
+curl -s -X POST -H "x-admin-key: $ADMIN_KEY" http://localhost:5000/api/admin/analyzer-log/clear
+tail -n 5 out/_log/analyzer.ndjson
+```
+
+Must show:
+
+```
+"log_cleared"
+```
+
+---
+
+End of instructions.
