@@ -122,6 +122,21 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/admin/analyzer-log/clear", async (_req, res) => {
+    if (process.env.NODE_ENV === "production") {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    try {
+      await fs.rm(LOG_FILE, { force: true });
+      await fs.mkdir(LOG_DIR, { recursive: true });
+      await fs.writeFile(LOG_FILE, "", "utf8");
+      return res.json({ ok: true });
+    } catch (err) {
+      console.error("Failed to clear analyzer log:", err);
+      return res.status(500).json({ ok: false });
+    }
+  });
+
   app.post("/api/admin/reset-analyzer", async (req, res) => {
     if (process.env.NODE_ENV === "production") {
       res.status(403).json({ message: "Not available in production" });

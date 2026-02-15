@@ -1,0 +1,96 @@
+Good — the **behavioral proof succeeded**:
+
+* reset works (`{"ok":true}` + `[]` + `out/` empty)
+* logbook is being written (`out/_log/analyzer.ndjson` exists)
+* viewer endpoint parses NDJSON and returns JSON (you saw the array)
+
+So the only thing “broken” here is **you pasted TypeScript into bash** (that’s why you got `bash: syntax error near unexpected token` and the “try” package prompt).
+
+Here are **Replit-agent-ready, exact instructions** to add the logbook-clear endpoint properly.
+
+---
+
+## Replit Agent Instructions (do exactly this)
+
+### Goal
+
+Add a **dev-only** endpoint that clears only the analyzer logbook:
+
+`POST /api/admin/analyzer-log/clear`
+
+* In production: 403
+* In dev: deletes + recreates `out/_log/analyzer.ndjson` as empty
+
+### Steps
+
+1. **Open** `server/routes.ts`
+
+2. **Find** the existing admin routes:
+
+* `app.get("/api/admin/analyzer-log"...` (you already have this at ~line 111)
+* `app.post("/api/admin/reset-analyzer"...` (at ~line 125)
+
+3. **Insert** this new route **between** those two (or right after `analyzer-log`):
+
+```ts
+app.post("/api/admin/analyzer-log/clear", async (_req, res) => {
+  if (process.env.NODE_ENV === "production") {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+
+  try {
+    const logDir = path.resolve(process.cwd(), "out", "_log");
+    const logFile = path.join(logDir, "analyzer.ndjson");
+
+    // remove log file only; keep out/ and _log/ folder
+    await fs.rm(logFile, { force: true });
+
+    // recreate empty file
+    await fs.mkdir(logDir, { recursive: true });
+    await fs.writeFile(logFile, "", "utf8");
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("Failed to clear analyzer log:", err);
+    return res.status(500).json({ ok: false });
+  }
+});
+```
+
+4. **Save** the file.
+
+5. **Restart** the server (`run` / `npm run dev` / Replit restart button—whatever you’re using).
+
+6. **Verify** with these commands:
+
+```bash
+# Create at least one log entry first
+ID=$(curl -s -X POST http://localhost:5000/api/projects/analyze-replit | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
+echo "ID=$ID"
+sleep 1
+wc -l out/_log/analyzer.ndjson
+
+# Clear logbook only
+curl -s -X POST http://localhost:5000/api/admin/analyzer-log/clear; echo
+wc -l out/_log/analyzer.ndjson
+tail -n 5 out/_log/analyzer.ndjson || true
+
+# Make sure projects/analyses were NOT wiped
+curl -s http://localhost:5000/api/projects | head -c 200; echo
+```
+
+### Expected results
+
+* `POST /api/admin/analyzer-log/clear` returns `{"ok":true}`
+* `wc -l out/_log/analyzer.ndjson` becomes `0`
+* `/api/projects` still shows your project(s) (not empty unless you reset them)
+
+---
+
+## What NOT to do (your last error)
+
+Do **not** paste TypeScript into the shell. The shell only runs bash commands. Code changes must be made in the **file** (`server/routes.ts`), then restart.
+
+---
+
+If you want one more hardening touch: change the clear endpoint to **rotate** instead of wipe (rename to `analyzer.<ts>.ndjson`), but what you asked for is a straight reset and the above is correct.
