@@ -41,7 +41,7 @@ PTA performs static, evidence-bound analysis of software artifacts. Every findin
 
 All findings reference:
 - **File path**: Relative to project root
-- **Line range**: 1-indexed (never 0)
+- **Line range**: 1-indexed
 - **Snippet hash**: First 12 hex chars of SHA-256 of stripped line(s)
 - **Epistemic label**: 
   - In `operate.json`: EVIDENCED (hash-verified), INFERRED (pattern-based), or UNKNOWN (missing evidence)

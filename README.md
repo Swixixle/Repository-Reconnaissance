@@ -58,7 +58,7 @@ Event-driven static analysis triggered by GitHub push and pull request events. W
 ### What it is NOT
 
 - Not runtime monitoring, tracing, or telemetry
-- Not a security scanner, vulnerability scanner, or SCA tool
+- Not a security scanner, vulnerability detector, or SCA tool
 - Not a CI/CD runner replacement (it does not build, test, or deploy your code)
 - Not a compliance certification tool
 
