@@ -1,0 +1,85 @@
+This passes. You now have **repo-wide doc coverage** that is internally consistent *and* matches code:
+
+* Files exist with fresh timestamps: `README.md`, `replit.md`, `docs/API.md`, `docs/ARCHITECTURE.md`.
+* CI Feed microcopy updated in `client/src/pages/ci-feed.tsx` (static-only line present).
+* Env vars documented match actual usage in `server/routes.ts`, `server/ci-worker.ts`, and analyzer (`GITHUB_TOKEN`), plus `CI_TMP_DIR` + `ANALYZER_TIMEOUT_MS`.
+* Endpoint lists in **all docs** match exactly what’s registered in `server/routes.ts`.
+
+Two concrete fixes / cleanups I recommend before you ship:
+
+## 1) Remove the duplicate `API.md` / `ARCHITECTURE.md` at repo root (or make them stubs)
+
+Your `ls` output shows both:
+
+* `docs/API.md` and also `API.md`
+* `docs/ARCHITECTURE.md` and also `ARCHITECTURE.md`
+
+That will confuse users and future you.
+
+**Pick one canonical location.** I’d keep `docs/*` as canonical and make root files either:
+
+* deleted, or
+* tiny stubs that link to `docs/*`.
+
+**Option A (delete root duplicates):**
+
+```bash
+rm -f API.md ARCHITECTURE.md
+git add -A
+git commit -m "docs: remove duplicate root API/ARCHITECTURE docs"
+```
+
+**Option B (keep root as pointers):**
+Replace `API.md` content with:
+
+```md
+# API
+
+Canonical API documentation: `docs/API.md`
+```
+
+Replace `ARCHITECTURE.md` content with:
+
+```md
+# Architecture
+
+Canonical architecture documentation: `docs/ARCHITECTURE.md`
+```
+
+Then:
+
+```bash
+git add API.md ARCHITECTURE.md
+git commit -m "docs: make root API/ARCHITECTURE pointers to docs/"
+```
+
+## 2) Verify what changed in those “4 commits” (sanity)
+
+Right now you didn’t show `git show --stat -1`, so we can’t see what’s in the latest commit(s). Do:
+
+```bash
+git log --oneline -5
+git show --stat -1
+```
+
+This is just to confirm the last commit truly is documentation-only and not unexpected code edits.
+
+---
+
+# Ship it
+
+You’re ahead of origin by 4 commits. Push:
+
+```bash
+git push origin main
+```
+
+---
+
+If you do the “duplicate docs” cleanup, run this final check after:
+
+```bash
+rg -n "docs/API.md|docs/ARCHITECTURE.md|API.md|ARCHITECTURE.md" README.md replit.md
+```
+
+and make sure references point to exactly the canonical files you chose.
