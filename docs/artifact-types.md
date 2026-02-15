@@ -54,6 +54,8 @@ Example evidence object:
 }
 ```
 
+**Note**: For single-line findings, `line_start` and `line_end` are identical. For multi-line evidence (e.g., a function spanning lines 10-15), both fields differ.
+
 ## Adding New Artifact Types
 
 To extend PTA's artifact coverage:
