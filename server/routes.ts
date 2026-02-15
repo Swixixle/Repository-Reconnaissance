@@ -38,6 +38,12 @@ function requireDevAdmin(req: any, res: any): boolean {
       res.status(401).json({ error: "Unauthorized" });
       return false;
     }
+  } else {
+    logAdminEvent("admin_unguarded", {
+      path: req.path,
+      ip: req.ip,
+      ua: String(req.headers["user-agent"] || ""),
+    });
   }
   return true;
 }
