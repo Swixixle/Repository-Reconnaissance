@@ -1,0 +1,270 @@
+Copy/paste this to Replit Agents. It’s written as a **repo-wide documentation refactor order** with **concrete edit targets**, **required content**, and **definition-of-done** checks.
+
+---
+
+## Replit Agents: Repo-wide Documentation Update for Live Static CI Feed
+
+### Goal
+
+Update documentation **throughout the repo** so the new **Live Static CI Feed** feature is consistently described, accurately scoped, and easy to set up (webhook + worker + UI). Remove ambiguity, avoid overclaims (no runtime observability), and ensure all docs agree on env vars, endpoints, and workflow.
+
+### Non-goals
+
+* Do not change core logic unless a doc claim is provably wrong
+* Do not add new features
+* Do not write marketing fluff; keep technical and operator-grade
+
+---
+
+# Phase 0 — Discover all documentation surfaces (inventory)
+
+1. Find all markdown + docs files:
+
+* Root: `README.md`, `replit.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, `SECURITY.md`, `LICENSE`
+* `docs/` folder (if exists)
+* Any `README*.md` in subfolders
+* Any OpenAPI/spec docs if present
+
+Run:
+
+```bash
+ls -la
+find . -maxdepth 3 -iname "*.md" -print
+```
+
+2. Locate “public-facing” documentation pages in the UI (if any):
+
+* `client/src/pages/*`
+* Ensure the CI Feed page includes correct setup info but does not replace canonical docs
+
+**Deliverable:** A checklist in agent notes enumerating the docs that exist and will be edited.
+
+---
+
+# Phase 1 — Establish a canonical CI Feed spec block (single source of truth)
+
+Create (or update) a canonical section titled exactly:
+
+## Live Static CI Feed
+
+This block must include:
+
+### What it is
+
+* Event-driven static analysis triggered by GitHub push/PR events
+* Creates `ci_runs` + `ci_jobs`, processes in worker, stores artifacts under `out/ci/<run_id>/`
+* Provides a UI feed at `/ci`
+
+### What it is NOT
+
+* Not runtime monitoring / tracing / telemetry
+* Not a security scanner
+* Not a CI runner replacement
+
+### Setup Steps (minimum)
+
+1. Set env vars (Secrets)
+2. Add GitHub webhook
+3. Ensure worker runs (loop or tick endpoint)
+4. Verify in UI
+
+### Environment Variables
+
+List exactly:
+
+* `GITHUB_WEBHOOK_SECRET` (required for webhook verification)
+* `GITHUB_TOKEN` (required for private repos / API archive fetch if used)
+* Any repo-specific `CI_TMP_DIR` or similar if present in code
+* Do not mention env vars not actually used
+
+### API Endpoints (canonical list)
+
+Document these endpoints with method + purpose:
+
+* `POST /api/webhooks/github`
+* `GET /api/ci/runs?owner=&repo=&limit=`
+* `GET /api/ci/runs/:id`
+* `POST /api/ci/enqueue`
+* `POST /api/ci/worker/tick`
+* `GET /api/ci/health`
+
+### Data Model (short)
+
+Summarize tables (no full schema dump):
+
+* `ci_runs`: repoOwner/repoName/ref/commitSha/eventType/status/outDir/summaryJson/timestamps/error
+* `ci_jobs`: runId/status/attempts/leasedUntil/lastError
+
+### Operational notes
+
+* Idempotency/deduplication rule (if implemented): e.g. same owner/repo/SHA within 6 hours dedupes
+* Retry logic: max attempts = 3 then DEAD, run FAILED
+* Signature verification: HMAC-SHA256 with `X-Hub-Signature-256`
+
+**Rule:** This canonical block must appear in `README.md` and `replit.md`, and other docs may link to it rather than re-explaining.
+
+---
+
+# Phase 2 — Update `README.md` (root)
+
+Edit `README.md` to include:
+
+1. A concise “What this repo is” (existing) plus a new section:
+
+* `## Live Static CI Feed` (use canonical block)
+
+2. “Quickstart” section updated to include CI Feed setup (but not overly detailed):
+
+* Link to `replit.md` for Replit specifics
+* Include a minimal webhook setup outline and mention `/ci` page
+
+3. Add a “Limitations” section:
+
+* Explicitly: static-only; cannot observe runtime behavior
+* Deterministic vs LLM-augmented mode (only if this repo actually has both)
+
+4. Add a “Security & Trust” short section:
+
+* Webhook signature verification requirement
+* No secrets in repo; set via Replit Secrets / env vars
+
+**Do not** claim compliance with ISO/EU AI Act/etc unless there is already a documented mapping with evidence. If mentioned, phrase as “supports auditability goals” rather than “compliant”.
+
+---
+
+# Phase 3 — Update `replit.md` (operator/runbook)
+
+`replit.md` should become the **deployment/operator runbook**.
+
+Add/ensure these subsections exist:
+
+1. **Secrets (Env Vars)**
+
+* Step-by-step where to set them in Replit
+* Include a one-liner to generate a secret:
+
+```bash
+python - <<'PY'
+import secrets; print(secrets.token_hex(32))
+PY
+```
+
+2. **GitHub Webhook Setup**
+
+* Exact GitHub UI path: Settings → Webhooks → Add webhook
+* Payload URL: `https://<your-app-domain>/api/webhooks/github`
+* Content type: `application/json`
+* Events: Push + Pull requests
+* Secret: must match `GITHUB_WEBHOOK_SECRET`
+
+3. **Worker Operation**
+
+* Explain two modes clearly:
+
+  * continuous worker (if exists)
+  * fallback: `POST /api/ci/worker/tick`
+* If the repo *does not* run a continuous worker automatically, document that tick must be invoked periodically (and recommend adding a server-side interval if desired, but do not implement it unless asked)
+
+4. **Verification Steps**
+   Provide a short ritual:
+
+* Trigger a manual enqueue with a real SHA
+* Call worker tick
+* View `/ci`
+* Check `out/ci/<run_id>/`
+
+5. **Troubleshooting**
+   Include common errors:
+
+* 401 on webhook → secret mismatch / missing env var
+* job DEAD → bad SHA / clone failure / analyzer crash
+* feed empty → wrong owner/repo query or no runs
+
+---
+
+# Phase 4 — Update any API docs (or create `docs/API.md`)
+
+If the repo already has API docs, update them; if not, create `docs/API.md`.
+
+Must include:
+
+* Endpoint list (canonical)
+* Request/response JSON examples for:
+
+  * `POST /api/ci/enqueue`
+  * `GET /api/ci/runs`
+  * `GET /api/ci/health`
+* Webhook requirements (signature header, secret)
+
+Do NOT include long webhook payload samples.
+
+---
+
+# Phase 5 — Update Architecture docs (or create `docs/ARCHITECTURE.md`)
+
+Create or update architecture documentation:
+
+Include:
+
+* High-level components: UI (`/ci`), API routes, storage tables, worker, analyzer invocation, artifact output
+* Job leasing strategy: `FOR UPDATE SKIP LOCKED` lease + `leased_until`
+* Failure modes + retry policy
+* Deterministic/static posture emphasized
+
+---
+
+# Phase 6 — Update UI microcopy (CI Feed page)
+
+In `client/src/pages/ci-feed.tsx`:
+
+* Ensure any setup text matches the canonical docs
+* Add a line: “Static analysis only (no runtime telemetry).”
+* Ensure webhook URL shows public origin (already uses `window.location.origin`)
+* Do not add new features; text only
+
+---
+
+# Phase 7 — Repo consistency sweep (remove drift)
+
+Run a repo-wide grep for outdated/incorrect phrases:
+
+* “CI pipeline” → clarify “Live Static CI Feed” (it’s queue+worker, not GitHub Actions)
+* any mention of runtime monitoring → remove or correct
+* any endpoints listed incorrectly (snake_case vs camelCase keys) → docs must match actual API output format
+
+Commands:
+
+```bash
+rg "webhook|ci_runs|ci_jobs|/api/ci/|/api/webhooks/github|GITHUB_WEBHOOK_SECRET|GITHUB_TOKEN" -n .
+rg "runtime|telemetry|datadog|observability|security scanner|SCA" -n .
+```
+
+Where docs diverge from code, update docs to match code.
+
+---
+
+# Phase 8 — Final checks (Definition of Done)
+
+Documentation is “done” only if all are true:
+
+1. `README.md` contains canonical `## Live Static CI Feed` section
+2. `replit.md` includes complete setup + troubleshooting
+3. `docs/API.md` exists and matches real endpoints
+4. `docs/ARCHITECTURE.md` exists and describes worker+queue+artifacts
+5. UI CI Feed page text matches docs
+6. No contradictory claims found by grep sweep
+7. All markdown lint/formatting is readable (headings, bullets, code blocks)
+
+---
+
+## Output required from agent
+
+At the end, provide:
+
+1. A list of files modified
+2. A short “what changed” summary per file
+3. Any remaining known doc gaps (if any) with exact file/line pointers
+
+---
+
+If you want this even tighter, tell me what you consider the “front door” doc (usually `README.md`), and I’ll give you the **exact section ordering** to match your existing voice and product framing.
