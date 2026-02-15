@@ -195,7 +195,7 @@ async function runAnalysis(projectId: number, source: string, mode: string) {
     console.error(`[Analyzer ${projectId}] Timeout after 10 minutes — killing`);
     pythonProcess.kill("SIGKILL");
     void finishOnce("failed", "timeout_10m");
-  }, 10 * 60 * 1000);
+  }, Number(process.env.ANALYZER_TIMEOUT_MS) || 10 * 60 * 1000);
 
   let stdout = "";
   let stderr = "";
