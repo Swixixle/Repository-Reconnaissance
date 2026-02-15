@@ -8,7 +8,7 @@ import path from "path";
 import fs from "fs/promises";
 import { existsSync, readFileSync, appendFileSync, mkdirSync } from "fs";
 import crypto from "crypto";
-import { processOneJob, startWorkerLoop } from "./ci-worker";
+import { processOneJob, startWorkerLoop, getDiskStatus } from "./ci-worker";
 
 const LOG_DIR = path.resolve(process.cwd(), "out", "_log");
 const LOG_FILE = path.join(LOG_DIR, "analyzer.ndjson");
@@ -214,8 +214,22 @@ export async function registerRoutes(
       return res.status(401).json({ error: "invalid_signature" });
     }
 
+    const deliveryId = req.headers["x-github-delivery"] as string | undefined;
     const event = req.headers["x-github-event"] as string;
+
+    if (!deliveryId || !event) {
+      return res.status(400).json({ ok: false, error: "missing_delivery_id" });
+    }
+
     const payload = req.body;
+    const repoOwner = payload.repository?.owner?.login || payload.repository?.owner?.name;
+    const repoNameForDelivery = payload.repository?.name;
+
+    const isNew = await storage.checkAndRecordDelivery(deliveryId, event, repoOwner, repoNameForDelivery);
+    if (!isNew) {
+      console.log(`[Webhook] Replay blocked: delivery=${deliveryId}`);
+      return res.status(202).json({ ok: true, deduped: true });
+    }
 
     if (event === "push") {
       const owner = payload.repository?.owner?.login || payload.repository?.owner?.name;
@@ -327,6 +341,7 @@ export async function registerRoutes(
     try {
       const jobCounts = await storage.getCiJobCounts();
       const lastRun = await storage.getLastCompletedRun();
+      const disk = getDiskStatus();
       res.json({
         ok: true,
         jobs: jobCounts,
@@ -336,6 +351,9 @@ export async function registerRoutes(
           finished_at: lastRun.finishedAt,
           repo: `${lastRun.repoOwner}/${lastRun.repoName}`,
         } : null,
+        ciTmpDir: disk.ciTmpDir,
+        ciTmpDirFreeBytes: disk.ciTmpDirFreeBytes,
+        ciTmpDirLowDisk: disk.ciTmpDirLowDisk,
       });
     } catch (err: any) {
       res.status(500).json({ ok: false, error: String(err?.message || err) });

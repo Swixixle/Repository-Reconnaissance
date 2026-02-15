@@ -2,9 +2,45 @@ import { storage } from "./storage";
 import { spawn } from "child_process";
 import path from "path";
 import fs from "fs/promises";
-import { existsSync, mkdirSync } from "fs";
+import { existsSync, mkdirSync, statfsSync } from "fs";
 
 const CI_OUT_BASE = path.resolve(process.cwd(), "out", "ci");
+
+function sanitizeGitUrl(url: string): string {
+  return url.replace(/\/\/[^@]+@/, "//***@");
+}
+
+function checkDiskSpace(dir: string): { freeBytes: number; lowDisk: boolean } {
+  try {
+    const stats = statfsSync(dir);
+    const freeBytes = stats.bfree * stats.bsize;
+    const totalBytes = stats.blocks * stats.bsize;
+    const freePercent = totalBytes > 0 ? (freeBytes / totalBytes) * 100 : 100;
+    const LOW_DISK_BYTES = 1024 * 1024 * 1024;
+    const LOW_DISK_PERCENT = 5;
+    return {
+      freeBytes,
+      lowDisk: freeBytes < LOW_DISK_BYTES || freePercent < LOW_DISK_PERCENT,
+    };
+  } catch {
+    return { freeBytes: -1, lowDisk: false };
+  }
+}
+
+export function getCiTmpDir(): string {
+  return path.resolve(process.env.CI_TMP_DIR || "/tmp/ci");
+}
+
+export function getDiskStatus(): { ciTmpDir: string; ciTmpDirFreeBytes: number; ciTmpDirLowDisk: boolean } {
+  const tmpDir = getCiTmpDir();
+  mkdirSync(tmpDir, { recursive: true });
+  const { freeBytes, lowDisk } = checkDiskSpace(tmpDir);
+  return {
+    ciTmpDir: tmpDir,
+    ciTmpDirFreeBytes: freeBytes,
+    ciTmpDirLowDisk: lowDisk,
+  };
+}
 
 export async function processOneJob(): Promise<{ processed: boolean; runId?: string; status?: string }> {
   const leased = await storage.leaseNextJob();
@@ -16,9 +52,27 @@ export async function processOneJob(): Promise<{ processed: boolean; runId?: str
   const outDir = path.join(CI_OUT_BASE, run.id);
   mkdirSync(outDir, { recursive: true });
 
+  const tmpBase = getCiTmpDir();
+  mkdirSync(tmpBase, { recursive: true });
+
+  const { lowDisk } = checkDiskSpace(tmpBase);
+  if (lowDisk) {
+    const errMsg = "ci_tmp_dir_low_disk";
+    console.error(`[CI Worker] Low disk space in ${tmpBase}, failing job`);
+    await storage.updateCiRun(run.id, {
+      status: "FAILED",
+      finishedAt: new Date(),
+      error: errMsg,
+    });
+    await storage.completeJob(job.id, "DEAD", errMsg);
+    return { processed: true, runId: run.id, status: "FAILED" };
+  }
+
+  const runWorkDir = path.join(tmpBase, `run-${run.id}`);
   let tmpDir: string | null = null;
   try {
-    tmpDir = await fetchRepo(run.repoOwner, run.repoName, run.commitSha);
+    await fs.mkdir(runWorkDir, { recursive: true });
+    tmpDir = await fetchRepo(run.repoOwner, run.repoName, run.commitSha, runWorkDir);
     const result = await runAnalyzerOnDir(tmpDir, outDir, run.id);
 
     if (result.success) {
@@ -43,7 +97,7 @@ export async function processOneJob(): Promise<{ processed: boolean; runId?: str
       return { processed: true, runId: run.id, status: "FAILED" };
     }
   } catch (err: any) {
-    const errMsg = String(err?.message || err);
+    const errMsg = sanitizeGitUrl(String(err?.message || err));
     console.error(`[CI Worker] Job ${job.id} exception:`, errMsg);
 
     if (job.attempts >= 3) {
@@ -58,44 +112,49 @@ export async function processOneJob(): Promise<{ processed: boolean; runId?: str
     }
     return { processed: true, runId: run.id, status: "FAILED" };
   } finally {
-    if (tmpDir) {
-      await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
+    const preserve = process.env.CI_PRESERVE_WORKDIR === "true";
+    if (!preserve && runWorkDir) {
+      await fs.rm(runWorkDir, { recursive: true, force: true }).catch(() => {});
+    } else if (preserve) {
+      console.log(`[CI Worker] Preserving workspace: ${runWorkDir}`);
     }
   }
 }
 
-async function fetchRepo(owner: string, repo: string, sha: string): Promise<string> {
-  const tmpBase = path.resolve(process.env.CI_TMP_DIR || "/tmp/ci");
-  const tmpDir = path.join(tmpBase, `${owner}-${repo}-${sha}-${Date.now()}`);
-  await fs.mkdir(tmpDir, { recursive: true });
+async function fetchRepo(owner: string, repo: string, sha: string, workDir: string): Promise<string> {
+  const repoDir = path.join(workDir, "repo");
+  await fs.mkdir(repoDir, { recursive: true });
 
-  const repoUrl = `https://github.com/${owner}/${repo}.git`;
   const token = process.env.GITHUB_TOKEN;
-
-  let cloneUrl = repoUrl;
+  const publicUrl = `https://github.com/${owner}/${repo}.git`;
+  let cloneUrl = publicUrl;
   if (token) {
     cloneUrl = `https://x-access-token:${token}@github.com/${owner}/${repo}.git`;
   }
 
-  await execCommand("git", ["clone", "--depth", "1", cloneUrl, tmpDir]);
+  console.log(`[CI Worker] Cloning ${owner}/${repo}@${sha}`);
 
-  await execCommand("git", ["-C", tmpDir, "fetch", "--depth", "1", "origin", sha]);
-  await execCommand("git", ["-C", tmpDir, "checkout", sha]);
+  await execCommand("git", ["clone", "--depth", "1", cloneUrl, repoDir]);
+  await execCommand("git", ["-C", repoDir, "fetch", "--depth", "1", "origin", sha]);
+  await execCommand("git", ["-C", repoDir, "checkout", sha]);
 
-  return tmpDir;
+  return repoDir;
 }
 
 function execCommand(cmd: string, args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
+    const safeArgs = args.map((a) => sanitizeGitUrl(a));
     const proc = spawn(cmd, args, { cwd: process.cwd() });
     let stdout = "";
     let stderr = "";
     proc.stdout.on("data", (d) => { stdout += d.toString(); });
     proc.stderr.on("data", (d) => { stderr += d.toString(); });
-    proc.on("error", reject);
+    proc.on("error", (err) => {
+      reject(new Error(`${cmd} ${safeArgs.join(" ")} error: ${sanitizeGitUrl(String(err))}`));
+    });
     proc.on("close", (code) => {
       if (code === 0) resolve(stdout);
-      else reject(new Error(`${cmd} exited with code ${code}: ${stderr.slice(-500)}`));
+      else reject(new Error(`${cmd} ${safeArgs.join(" ")} exited with code ${code}: ${sanitizeGitUrl(stderr.slice(-500))}`));
     });
   });
 }
@@ -111,7 +170,7 @@ async function runAnalyzerOnDir(
   }
 
   const args = ["-m", "server.analyzer.analyzer_cli", "analyze", repoDir, "--output-dir", outDir];
-  console.log(`[CI Worker] Running analyzer: ${pythonBin} ${args.join(" ")}`);
+  console.log(`[CI Worker] Running analyzer for run=${runId}`);
 
   return new Promise((resolve) => {
     let stderr = "";

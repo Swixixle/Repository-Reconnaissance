@@ -1,0 +1,319 @@
+Copy/paste this to Replit Agents. It is a **stabilization finish-plan** for the Live Static CI Feed, centered on the real gaps surfaced: **GitHub replay protection (delivery-id dedupe), workspace hygiene, token-safe logging, and runbook correctness**. It is written as exact, implementable steps with acceptance tests.
+
+---
+
+## Replit Agents: Stabilize Live Static CI Feed to “Production-Stable” Condition
+
+### Objective
+
+Bring the Live Static CI Feed feature to a stable, defensible condition by implementing:
+
+1. **GitHub webhook replay protection** using `X-GitHub-Delivery` dedupe (NOT timestamp windows)
+2. **CI workspace isolation + cleanup** (disk exhaustion mitigation)
+3. **Token-safe clone handling** (no token leakage in logs)
+4. **Docs + UI consistency** (runbook matches real endpoints and behaviors)
+5. **Test coverage** for the new stability controls
+
+### Non-goals
+
+* Do not add runtime telemetry/observability
+* Do not build a full CI runner (GitHub Actions replacement)
+* Do not broaden event support beyond push + PR (unless already supported)
+* Do not add “admin API” unless admin-gated endpoints already exist in code
+
+---
+
+# Phase 0 — Pin Current State (no changes yet)
+
+1. Inspect current implementation:
+
+* `server/routes.ts` — webhook receiver and CI endpoints
+* `server/ci-worker.ts` — cloning, analyzer execution, temp dir usage, timeout handling
+* `server/storage.ts` — job leasing and run state transitions
+* `shared/schema.ts` — CI tables
+
+2. Record current behavior:
+
+* webhook signature verification logic (HMAC-SHA256 using `X-Hub-Signature-256`)
+* dedupe behavior (commit SHA dedupe exists? keep it)
+* worker cleanup behavior (does it delete temp workdirs or not?)
+
+**Deliverable:** agent note: “Current behavior summary” (short bullets, no docs edits yet).
+
+---
+
+# Phase 1 — Add GitHub Delivery ID replay protection (P1)
+
+## 1.1 Add DB table: `webhook_deliveries`
+
+In `shared/schema.ts`, add a table:
+
+* Table name: `webhook_deliveries`
+* Columns:
+
+  * `deliveryId` (text, primary key OR unique)  ✅ required
+  * `event` (text, not null)  (value from `X-GitHub-Event`)
+  * `repoOwner` (text, nullable)
+  * `repoName` (text, nullable)
+  * `receivedAt` (timestamptz, not null default now)
+
+Add index on `receivedAt` for pruning.
+
+Run migrations / schema push as required by this repo.
+
+## 1.2 Enforce dedupe in the webhook handler
+
+In `server/routes.ts` inside `POST /api/webhooks/github`:
+
+1. Read headers:
+
+* `X-GitHub-Delivery` → `deliveryId` (string) ✅ required
+* `X-GitHub-Event` → `eventName` ✅ required
+
+If missing deliveryId/eventName:
+
+* respond `400 {ok:false,error:"missing_delivery_id"}` (or consistent error style)
+
+2. Verify HMAC signature **before** dedupe insert (keep current verification order unless it’s wrong)
+
+* If signature fails → 401
+
+3. Dedupe insert:
+
+* Attempt to insert `deliveryId` into `webhook_deliveries`
+* If unique violation / conflict:
+
+  * respond `202 {ok:true,deduped:true}` and return early
+* If inserted:
+
+  * proceed to enqueue CI run as normal
+
+**Important:** Do not use timestamp windows; GitHub delivery ID is the correct replay control.
+
+## 1.3 Optional: Keep existing SHA-based dedupe
+
+If the system already dedupes `owner/repo/sha` within 6 hours, keep it (it’s useful).
+But **delivery-id dedupe is mandatory**.
+
+### Acceptance tests (manual)
+
+* Send the same webhook payload twice **with the same `X-GitHub-Delivery`**:
+
+  * First → creates run (200/201)
+  * Second → `202 deduped:true` and **no new run**
+* GitHub “Redeliver” in the UI should not create duplicates.
+
+---
+
+# Phase 2 — Workspace isolation + cleanup (P1/P2)
+
+## 2.1 Ensure per-run workspace directory
+
+In `server/ci-worker.ts`:
+
+* Set run workspace to: `${CI_TMP_DIR}/${runId}` (or `${CI_TMP_DIR}/run-${runId}`)
+* Ensure `mkdirp` before clone
+* Ensure clone happens only inside that workspace
+
+## 2.2 Cleanup on completion (success AND failure)
+
+Add `try/finally` around the entire per-run processing:
+
+* In `finally`, delete the workspace dir recursively (rm -rf)
+* BUT: add a debug escape hatch:
+
+  * env var `CI_PRESERVE_WORKDIR=true` prevents cleanup for debugging
+  * default is cleanup ON
+
+## 2.3 Disk safety guard (best-effort)
+
+Before cloning:
+
+* Check free disk space on the filesystem containing `CI_TMP_DIR`
+* If free space is below a threshold (e.g., < 1GB OR < 5%):
+
+  * fail the job with a clear error: `"ci_tmp_dir_low_disk"`
+  * mark run FAILED with that error
+    Implement in a lightweight way (Node `fs.statvfs` if available, or shell `df -k` and parse).
+
+Add this info to `/api/ci/health`:
+
+* `ciTmpDir`: path
+* `ciTmpDirLowDisk`: boolean
+* `ciTmpDirFreeBytes` if available
+
+### Acceptance tests (manual)
+
+* Run a job, then confirm `${CI_TMP_DIR}/<runId>` no longer exists after completion (unless preserve flag set).
+* Set `CI_PRESERVE_WORKDIR=true`, run job, confirm workspace remains.
+
+---
+
+# Phase 3 — Token-safe cloning and logging (P1)
+
+## 3.1 Never log URLs containing token
+
+Audit logs in `server/ci-worker.ts`:
+
+* If you inject `GITHUB_TOKEN` into clone URL, you MUST:
+
+  * never print the full URL
+  * log a sanitized URL (without credentials) or just `owner/repo@sha`
+
+Implement helper:
+
+* `sanitizeGitUrl(url: string) => string` stripping `https://TOKEN@github.com/...` to `https://github.com/...`
+
+## 3.2 Clone method hardening
+
+If using git clone:
+
+* Use shallow clone pinned to SHA:
+
+  * `git init`, `git remote add origin ...`, `git fetch --depth 1 origin <sha>`, `git checkout FETCH_HEAD`
+  * or equivalent that avoids fetching full history
+* Ensure errors propagate and are stored in run.error / job.lastError
+
+### Acceptance test
+
+* Intentionally set a fake token and trigger clone failure; logs must NOT include token.
+
+---
+
+# Phase 4 — Webhook receiver correctness hardening (P2)
+
+## 4.1 timingSafeEqual length guard
+
+Confirm the HMAC comparison does:
+
+* if lengths differ → 401 without calling `timingSafeEqual`
+
+## 4.2 Content-type handling
+
+GitHub sends JSON; ensure body parsing is correct and signature is computed over the **raw body** if required by your verification approach.
+If you’re already verifying correctly, leave it. If not:
+
+* Implement “raw body” capture middleware for webhook route only.
+
+(Do not over-refactor; minimal change necessary.)
+
+---
+
+# Phase 5 — Tests (P1)
+
+Add/extend tests to cover:
+
+1. Delivery ID dedupe:
+
+* first delivery inserts
+* second same delivery returns 202 deduped and does not enqueue a second job
+
+2. Cleanup behavior:
+
+* with default settings, workspace removed
+* with `CI_PRESERVE_WORKDIR=true`, workspace preserved
+
+3. Token redaction:
+
+* unit test sanitize helper
+* ensure logged strings do not contain token substring (test by spying logger)
+
+4. Disk guard (if implemented):
+
+* mock low disk scenario and assert job fails with `ci_tmp_dir_low_disk`
+
+**Constraint:** If the repo doesn’t have an existing test harness for worker filesystem, use narrow unit tests + integration test for webhook dedupe only.
+
+---
+
+# Phase 6 — Documentation + UI runbook final sync (P2)
+
+Update docs to reflect the true stable behavior:
+
+## 6.1 `docs/API.md`
+
+Add:
+
+* `X-GitHub-Delivery` required
+* Dedupe semantics:
+
+  * 202 `{deduped:true}` for repeated delivery IDs
+* Mention that replay protection is via delivery-id storage
+
+## 6.2 `docs/ARCHITECTURE.md`
+
+Add a section:
+
+* “Webhook Delivery Dedupe”
+* Explain table + unique constraint + redelivery behavior
+
+## 6.3 `replit.md`
+
+Add operational notes:
+
+* Cleanup behavior + `CI_PRESERVE_WORKDIR`
+* Disk guard behavior
+* Troubleshooting: `deduped:true` is expected on redelivery
+
+## 6.4 UI microcopy (optional tiny)
+
+On `/ci` page, add a short line:
+
+* “GitHub deliveries are deduplicated by X-GitHub-Delivery; redeliveries will not create duplicates.”
+
+---
+
+# Phase 7 — Final verification checklist (Definition of Done)
+
+Feature is “stable” only if:
+
+1. Webhook replay protection works:
+
+* same delivery ID → no duplicate run/job
+
+2. Workspace hygiene:
+
+* per-run directory isolation
+* cleanup on success/failure (unless preserve flag)
+
+3. No secret leakage:
+
+* token never appears in logs
+
+4. Health endpoint reflects CI workspace status:
+
+* job counts + last run + disk status fields (if implemented)
+
+5. Docs match reality:
+
+* no references to non-existent endpoints like `/api/ci/jobs` or `/api/ci/tick`
+* runbook uses actual `/api/ci/worker/tick`
+
+6. Tests pass:
+
+* webhook dedupe test
+* at least one cleanup/token redaction test
+
+---
+
+## Agent output required
+
+When done, provide:
+
+1. Files changed (full list)
+2. Key code snippets/locations added:
+
+   * schema table definition
+   * webhook dedupe insertion
+   * cleanup finally block
+3. Commands to run for verification
+4. Any known remaining risks (if any), with concrete reasons
+
+---
+
+If the agent encounters a design decision ambiguity, default to:
+
+* **minimal code changes**
+* **explicit refusal of runtime claims**
+* **deterministic behavior**
+* **sane defaults** (cleanup on, preserve off)

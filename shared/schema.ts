@@ -60,6 +60,16 @@ export const ciJobs = pgTable("ci_jobs", {
 export const insertProjectSchema = createInsertSchema(projects).omit({ id: true, createdAt: true, status: true, mode: true });
 export const insertAnalysisSchema = createInsertSchema(analyses).omit({ id: true, createdAt: true });
 
+export const webhookDeliveries = pgTable("webhook_deliveries", {
+  deliveryId: text("delivery_id").primaryKey(),
+  event: text("event").notNull(),
+  repoOwner: text("repo_owner"),
+  repoName: text("repo_name"),
+  receivedAt: timestamp("received_at").defaultNow().notNull(),
+}, (table) => [
+  index("webhook_deliveries_received_idx").on(table.receivedAt),
+]);
+
 export const insertCiRunSchema = createInsertSchema(ciRuns).omit({ id: true, createdAt: true, startedAt: true, finishedAt: true, error: true, outDir: true, summaryJson: true });
 export const insertCiJobSchema = createInsertSchema(ciJobs).omit({ id: true, createdAt: true, attempts: true, leasedUntil: true, lastError: true });
 

@@ -1,7 +1,7 @@
 import { db } from "./db";
 import { pool } from "./db";
 import {
-  projects, analyses, ciRuns, ciJobs,
+  projects, analyses, ciRuns, ciJobs, webhookDeliveries,
   type InsertProject, type InsertAnalysis, type Project, type Analysis,
   type CiRun, type InsertCiRun, type CiJob,
 } from "@shared/schema";
@@ -16,6 +16,7 @@ export interface IStorage {
   updateProjectStatus(id: number, status: string): Promise<Project>;
   resetAnalyzerLogbook(): Promise<void>;
 
+  checkAndRecordDelivery(deliveryId: string, event: string, repoOwner?: string, repoName?: string): Promise<boolean>;
   createCiRun(run: InsertCiRun): Promise<CiRun>;
   getCiRuns(owner: string, repo: string, limit?: number): Promise<CiRun[]>;
   getCiRun(id: string): Promise<CiRun | undefined>;
@@ -61,6 +62,23 @@ export class DatabaseStorage implements IStorage {
   async resetAnalyzerLogbook(): Promise<void> {
     await db.delete(analyses);
     await db.delete(projects);
+  }
+
+  async checkAndRecordDelivery(deliveryId: string, event: string, repoOwner?: string, repoName?: string): Promise<boolean> {
+    try {
+      await db.insert(webhookDeliveries).values({
+        deliveryId,
+        event,
+        repoOwner: repoOwner || null,
+        repoName: repoName || null,
+      });
+      return true;
+    } catch (err: any) {
+      if (err?.code === "23505") {
+        return false;
+      }
+      throw err;
+    }
   }
 
   async createCiRun(run: InsertCiRun): Promise<CiRun> {
