@@ -58,7 +58,7 @@ Example evidence object:
 }
 ```
 
-**Note**: For single-line findings, `line_start` and `line_end` are identical. For multi-line evidence (e.g., a function spanning lines 10-15), both fields differ.
+**Note**: For single-line findings, `line_start` and `line_end` are identical. For multi-line evidence (e.g., a function spanning lines 10-15), `line_start` and `line_end` have different values.
 
 ## Adding New Artifact Types
 
