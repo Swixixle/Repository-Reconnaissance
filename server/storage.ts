@@ -1,6 +1,11 @@
 import { db } from "./db";
-import { projects, analyses, type InsertProject, type InsertAnalysis, type Project, type Analysis } from "@shared/schema";
-import { eq, desc } from "drizzle-orm";
+import { pool } from "./db";
+import {
+  projects, analyses, ciRuns, ciJobs,
+  type InsertProject, type InsertAnalysis, type Project, type Analysis,
+  type CiRun, type InsertCiRun, type CiJob,
+} from "@shared/schema";
+import { eq, desc, and, or, lt, asc, sql } from "drizzle-orm";
 
 export interface IStorage {
   createProject(project: InsertProject, mode?: string): Promise<Project>;
@@ -10,6 +15,17 @@ export interface IStorage {
   getAnalysisByProjectId(projectId: number): Promise<Analysis | undefined>;
   updateProjectStatus(id: number, status: string): Promise<Project>;
   resetAnalyzerLogbook(): Promise<void>;
+
+  createCiRun(run: InsertCiRun): Promise<CiRun>;
+  getCiRuns(owner: string, repo: string, limit?: number): Promise<CiRun[]>;
+  getCiRun(id: string): Promise<CiRun | undefined>;
+  updateCiRun(id: string, data: Partial<CiRun>): Promise<CiRun>;
+  findExistingCiRun(owner: string, repo: string, sha: string, withinHours?: number): Promise<CiRun | undefined>;
+  createCiJob(runId: string): Promise<CiJob>;
+  leaseNextJob(): Promise<{ job: CiJob; run: CiRun } | null>;
+  completeJob(jobId: string, status: "DONE" | "DEAD", error?: string): Promise<void>;
+  getCiJobCounts(): Promise<Record<string, number>>;
+  getLastCompletedRun(): Promise<CiRun | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -45,6 +61,129 @@ export class DatabaseStorage implements IStorage {
   async resetAnalyzerLogbook(): Promise<void> {
     await db.delete(analyses);
     await db.delete(projects);
+  }
+
+  async createCiRun(run: InsertCiRun): Promise<CiRun> {
+    const [created] = await db.insert(ciRuns).values(run).returning();
+    return created;
+  }
+
+  async getCiRuns(owner: string, repo: string, limit: number = 50): Promise<CiRun[]> {
+    return await db.select().from(ciRuns)
+      .where(and(eq(ciRuns.repoOwner, owner), eq(ciRuns.repoName, repo)))
+      .orderBy(desc(ciRuns.createdAt))
+      .limit(limit);
+  }
+
+  async getCiRun(id: string): Promise<CiRun | undefined> {
+    const [run] = await db.select().from(ciRuns).where(eq(ciRuns.id, id));
+    return run;
+  }
+
+  async updateCiRun(id: string, data: Partial<CiRun>): Promise<CiRun> {
+    const [updated] = await db.update(ciRuns).set(data).where(eq(ciRuns.id, id)).returning();
+    return updated;
+  }
+
+  async findExistingCiRun(owner: string, repo: string, sha: string, withinHours: number = 6): Promise<CiRun | undefined> {
+    const cutoff = new Date(Date.now() - withinHours * 60 * 60 * 1000);
+    const results = await db.select().from(ciRuns)
+      .where(and(
+        eq(ciRuns.repoOwner, owner),
+        eq(ciRuns.repoName, repo),
+        eq(ciRuns.commitSha, sha),
+        sql`${ciRuns.createdAt} > ${cutoff}`,
+      ))
+      .orderBy(desc(ciRuns.createdAt))
+      .limit(1);
+    return results[0];
+  }
+
+  async createCiJob(runId: string): Promise<CiJob> {
+    const [job] = await db.insert(ciJobs).values({ runId, status: "READY" }).returning();
+    return job;
+  }
+
+  async leaseNextJob(): Promise<{ job: CiJob; run: CiRun } | null> {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const now = new Date();
+      const { rows } = await client.query(
+        `SELECT * FROM ci_jobs
+         WHERE status = 'READY' OR (status = 'LEASED' AND leased_until < $1)
+         ORDER BY created_at ASC
+         LIMIT 1
+         FOR UPDATE SKIP LOCKED`,
+        [now]
+      );
+      if (rows.length === 0) {
+        await client.query("ROLLBACK");
+        return null;
+      }
+      const row = rows[0];
+      if (row.attempts >= 3) {
+        await client.query(
+          `UPDATE ci_jobs SET status = 'DEAD', last_error = 'max_attempts_exceeded' WHERE id = $1`,
+          [row.id]
+        );
+        await client.query(
+          `UPDATE ci_runs SET status = 'FAILED', finished_at = $1, error = 'max_attempts_exceeded' WHERE id = $2`,
+          [now, row.run_id]
+        );
+        await client.query("COMMIT");
+        return null;
+      }
+      const leaseUntil = new Date(Date.now() + 5 * 60 * 1000);
+      await client.query(
+        `UPDATE ci_jobs SET status = 'LEASED', attempts = attempts + 1, leased_until = $1 WHERE id = $2`,
+        [leaseUntil, row.id]
+      );
+      await client.query(
+        `UPDATE ci_runs SET status = 'RUNNING', started_at = COALESCE(started_at, $1) WHERE id = $2`,
+        [now, row.run_id]
+      );
+      await client.query("COMMIT");
+
+      const job = await this.getCiJobById(row.id);
+      const run = await this.getCiRun(row.run_id);
+      if (!job || !run) return null;
+      return { job, run };
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  private async getCiJobById(id: string): Promise<CiJob | undefined> {
+    const [job] = await db.select().from(ciJobs).where(eq(ciJobs.id, id));
+    return job;
+  }
+
+  async completeJob(jobId: string, status: "DONE" | "DEAD", error?: string): Promise<void> {
+    await db.update(ciJobs).set({ status, lastError: error || null }).where(eq(ciJobs.id, jobId));
+  }
+
+  async getCiJobCounts(): Promise<Record<string, number>> {
+    const result = await db.select({
+      status: ciJobs.status,
+      count: sql<number>`count(*)::int`,
+    }).from(ciJobs).groupBy(ciJobs.status);
+    const counts: Record<string, number> = {};
+    for (const r of result) {
+      counts[r.status] = r.count;
+    }
+    return counts;
+  }
+
+  async getLastCompletedRun(): Promise<CiRun | undefined> {
+    const results = await db.select().from(ciRuns)
+      .where(or(eq(ciRuns.status, "SUCCEEDED"), eq(ciRuns.status, "FAILED")))
+      .orderBy(desc(ciRuns.finishedAt))
+      .limit(1);
+    return results[0];
   }
 }
 
