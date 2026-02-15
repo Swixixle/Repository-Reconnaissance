@@ -2,3 +2,6 @@
 {"ts":"2026-02-15T10:30:52.812Z","projectId":33,"event":"start","mode":"replit","source":"/home/runner/workspace"}
 {"ts":"2026-02-15T10:30:52.822Z","projectId":33,"event":"fatal","reason":"python_not_found","path":"/home/runner/workspace/.pythonlibs/bin/python3"}
 {"ts":"2026-02-15T10:30:52.823Z","projectId":33,"event":"finalize","status":"failed","reason":"python_not_found","durationMs":12}
+{"ts":"2026-02-15T10:32:27.913Z","projectId":32,"event":"exit","code":0}
+{"ts":"2026-02-15T10:32:27.955Z","projectId":32,"event":"finalize","status":"completed","durationMs":116849}
+{"ts":"2026-02-15T10:32:58.796Z","projectId":0,"event":"admin_unguarded","path":"/api/admin/analyzer-log","ip":"127.0.0.1","ua":"curl/8.14.1"}
