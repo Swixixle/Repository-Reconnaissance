@@ -9,5 +9,3 @@ output/
 attached_assets/
 *.ndjson
 *.swp
-.git/index.lock
-.git/REBASE_HEAD.lock
