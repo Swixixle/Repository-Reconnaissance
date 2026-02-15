@@ -261,6 +261,10 @@ function EvidenceTag({ evidence }: { evidence: any[] }) {
   );
 }
 
+function getTier(item: any): string {
+  return item?.tier || item?.status || "UNKNOWN";
+}
+
 function TierBadge({ tier }: { tier: string }) {
   const config: Record<string, { className: string; label: string }> = {
     EVIDENCED: { className: "border-green-500/20 text-green-500 bg-green-500/5", label: "EVIDENCED" },
@@ -377,7 +381,7 @@ function OperatorDashboard({ operate }: { operate: any }) {
                 <div key={i} className="space-y-1" data-testid={`boot-install-${i}`}>
                   <CopyableCommand command={item.command} />
                   <div className="flex items-center gap-2">
-                    <TierBadge tier={item.tier} />
+                    <TierBadge tier={getTier(item)} />
                     <EvidenceTag evidence={item.evidence} />
                   </div>
                 </div>
@@ -391,7 +395,7 @@ function OperatorDashboard({ operate }: { operate: any }) {
                 <div key={i} className="space-y-1" data-testid={`boot-dev-${i}`}>
                   <CopyableCommand command={item.command} />
                   <div className="flex items-center gap-2">
-                    <TierBadge tier={item.tier} />
+                    <TierBadge tier={getTier(item)} />
                     <EvidenceTag evidence={item.evidence} />
                   </div>
                 </div>
@@ -405,7 +409,7 @@ function OperatorDashboard({ operate }: { operate: any }) {
                 <div key={i} className="space-y-1" data-testid={`boot-prod-${i}`}>
                   <CopyableCommand command={item.command} />
                   <div className="flex items-center gap-2">
-                    <TierBadge tier={item.tier} />
+                    <TierBadge tier={getTier(item)} />
                     <EvidenceTag evidence={item.evidence} />
                   </div>
                 </div>
@@ -417,9 +421,10 @@ function OperatorDashboard({ operate }: { operate: any }) {
               <h4 className="text-xs text-muted-foreground uppercase tracking-wider">Ports</h4>
               {boot.ports.map((item: any, i: number) => (
                 <div key={i} className="flex items-center gap-3" data-testid={`boot-port-${i}`}>
-                  <span className="font-mono text-sm text-primary">{item.port}</span>
+                  <span className="font-mono text-sm text-primary">{item.port || item.value}</span>
                   {item.protocol && <span className="text-xs text-muted-foreground">{item.protocol}</span>}
-                  <TierBadge tier={item.tier} />
+                  {item.uses_env_port && <span className="text-xs text-muted-foreground">via env PORT</span>}
+                  <TierBadge tier={getTier(item)} />
                   <EvidenceTag evidence={item.evidence} />
                 </div>
               ))}
@@ -436,7 +441,7 @@ function OperatorDashboard({ operate }: { operate: any }) {
                   <div key={i} className="flex items-center gap-2 flex-wrap" data-testid={`endpoint-${i}`}>
                     <Badge variant="outline" className="font-mono text-[10px] no-default-hover-elevate no-default-active-elevate">{ep.method}</Badge>
                     <span className="font-mono text-sm">{ep.path}</span>
-                    <TierBadge tier={ep.tier} />
+                    <TierBadge tier={getTier(ep)} />
                     <EvidenceTag evidence={ep.evidence} />
                   </div>
                 ))}
@@ -449,10 +454,10 @@ function OperatorDashboard({ operate }: { operate: any }) {
               <div className="space-y-1.5">
                 {integrate.env_vars.map((ev: any, i: number) => (
                   <div key={i} className="flex items-center gap-2 flex-wrap" data-testid={`env-var-${i}`}>
-                    <code className="text-sm font-mono text-primary/80 bg-secondary/40 px-1.5 py-0.5 rounded">{ev.name}</code>
+                    <code className="text-sm font-mono text-primary/80 bg-secondary/40 px-1.5 py-0.5 rounded">{ev.name || ev.value}</code>
                     {ev.required && <span className="text-[10px] text-red-400 font-mono">REQUIRED</span>}
                     {ev.source && <span className="text-xs text-muted-foreground">{ev.source}</span>}
-                    <TierBadge tier={ev.tier} />
+                    <TierBadge tier={getTier(ev)} />
                   </div>
                 ))}
               </div>
@@ -467,7 +472,7 @@ function OperatorDashboard({ operate }: { operate: any }) {
                 {integrate.auth.map((a: any, i: number) => (
                   <div key={i} className="flex items-center gap-2 flex-wrap" data-testid={`auth-${i}`}>
                     <span className="text-sm">{a.name || a.type}</span>
-                    <TierBadge tier={a.tier} />
+                    <TierBadge tier={getTier(a)} />
                     <EvidenceTag evidence={a.evidence} />
                   </div>
                 ))}
@@ -483,7 +488,7 @@ function OperatorDashboard({ operate }: { operate: any }) {
               {deploy.platform.map((p: any, i: number) => (
                 <div key={i} className="flex items-center gap-2 flex-wrap" data-testid={`deploy-platform-${i}`}>
                   <span className="text-sm font-medium">{p.name}</span>
-                  <TierBadge tier={p.tier} />
+                  <TierBadge tier={getTier(p)} />
                   {p.unknown_reason && <span className="text-xs text-yellow-500">{p.unknown_reason}</span>}
                   <EvidenceTag evidence={p.evidence} />
                 </div>
@@ -496,7 +501,7 @@ function OperatorDashboard({ operate }: { operate: any }) {
               {deploy.ci.map((c: any, i: number) => (
                 <div key={i} className="flex items-center gap-2 flex-wrap" data-testid={`deploy-ci-${i}`}>
                   <span className="text-sm font-medium">{c.name}</span>
-                  <TierBadge tier={c.tier} />
+                  <TierBadge tier={getTier(c)} />
                   <EvidenceTag evidence={c.evidence} />
                 </div>
               ))}
@@ -508,7 +513,7 @@ function OperatorDashboard({ operate }: { operate: any }) {
               {deploy.containerization.map((c: any, i: number) => (
                 <div key={i} className="flex items-center gap-2 flex-wrap" data-testid={`deploy-container-${i}`}>
                   <span className="text-sm font-medium">{c.name}</span>
-                  <TierBadge tier={c.tier} />
+                  <TierBadge tier={getTier(c)} />
                   {c.unknown_reason && <span className="text-xs text-yellow-500">{c.unknown_reason}</span>}
                   <EvidenceTag evidence={c.evidence} />
                 </div>
@@ -532,9 +537,9 @@ function OperatorDashboard({ operate }: { operate: any }) {
                   {steps.map((step: any, i: number) => (
                     <div key={i} className="space-y-1" data-testid={`runbook-${category}-${i}`}>
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-mono text-muted-foreground w-5">{step.order}.</span>
-                        <span className="text-sm">{step.title}</span>
-                        <TierBadge tier={step.tier} />
+                        <span className="text-xs font-mono text-muted-foreground w-5">{step.order || step.step}.</span>
+                        <span className="text-sm">{step.title || step.action}</span>
+                        <TierBadge tier={getTier(step)} />
                       </div>
                       {step.command && <CopyableCommand command={step.command} />}
                       {step.note && <p className="text-xs text-muted-foreground pl-7">{step.note}</p>}

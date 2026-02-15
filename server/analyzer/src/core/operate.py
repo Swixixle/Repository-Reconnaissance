@@ -770,17 +770,25 @@ def _extract_base_path(endpoints: List[dict]) -> dict:
                       "Could not determine API base path")
 
 
-def build_operate(repo_dir: Path, file_index: List[str],
+def build_operate(repo_dir: Path, file_index,
                   mode: str = "local",
                   replit_profile: Optional[dict] = None) -> dict:
+    paths = []
+    for entry in file_index:
+        if isinstance(entry, dict):
+            paths.append(entry.get("path", ""))
+        else:
+            paths.append(str(entry))
+    paths = [p for p in paths if p]
+
     install = _extract_install_commands(repo_dir)
     run = _extract_run_commands(repo_dir)
-    ports = _extract_ports(repo_dir, file_index)
-    endpoints = _extract_endpoints(repo_dir, file_index)
-    env_vars = _extract_env_vars(repo_dir, file_index)
-    auth = _extract_auth(repo_dir, file_index)
+    ports = _extract_ports(repo_dir, paths)
+    endpoints = _extract_endpoints(repo_dir, paths)
+    env_vars = _extract_env_vars(repo_dir, paths)
+    auth = _extract_auth(repo_dir, paths)
     deploy = _extract_deploy(repo_dir)
-    snapshot = _extract_snapshot(repo_dir, file_index, replit_profile)
+    snapshot = _extract_snapshot(repo_dir, paths, replit_profile)
 
     boot = {
         "install": install,
@@ -817,7 +825,7 @@ def build_operate(repo_dir: Path, file_index: List[str],
 
 def validate_operate(operate: dict) -> List[str]:
     errors = []
-    required_top = ["tool_version", "mode", "generated_at", "boot",
+    required_top = ["tool_version", "mode", "boot",
                     "integrate", "deploy", "snapshot", "readiness", "gaps", "runbooks"]
     for field in required_top:
         if field not in operate:
@@ -832,12 +840,11 @@ def validate_operate(operate: dict) -> List[str]:
         for i, item in enumerate(items):
             if not isinstance(item, dict):
                 continue
-            status = item.get("status", "")
-            if status == "EVIDENCED" and not item.get("evidence"):
+            tier = item.get("tier", "")
+            if tier == "EVIDENCED" and not item.get("evidence"):
                 errors.append(f"{context}[{i}]: EVIDENCED but no evidence")
-            if status == "UNKNOWN" and not item.get("unknown_reason", ""):
-                if "unknown_reason" in item:
-                    errors.append(f"{context}[{i}]: UNKNOWN but empty unknown_reason")
+            if tier == "UNKNOWN" and not item.get("unknown_reason"):
+                errors.append(f"{context}[{i}]: UNKNOWN but missing unknown_reason")
 
     boot = operate.get("boot", {})
     for key in ["install", "dev", "prod", "ports"]:
@@ -848,12 +855,23 @@ def validate_operate(operate: dict) -> List[str]:
     _check_items(integrate.get("auth", []), "integrate.auth")
     _check_items(integrate.get("env_vars", []), "integrate.env_vars")
 
+    deploy = operate.get("deploy", {})
+    for key in ["platform", "ci", "containerization"]:
+        _check_items(deploy.get(key, []), f"deploy.{key}")
+
+    readiness = operate.get("readiness", {})
+    for cat, data in readiness.items():
+        if isinstance(data, dict):
+            score = data.get("score", -1)
+            if not (0 <= score <= 100):
+                errors.append(f"readiness.{cat}: score {score} out of range 0-100")
+
     for gap in operate.get("gaps", []):
         if not isinstance(gap, dict):
             continue
         if not gap.get("title"):
             errors.append("Gap missing title")
-        if not gap.get("action"):
-            errors.append("Gap missing action")
+        if not gap.get("severity"):
+            errors.append("Gap missing severity")
 
     return errors
