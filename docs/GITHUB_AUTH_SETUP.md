@@ -73,8 +73,10 @@ chmod 600 ~/.git-credentials
 ```
 
 The credential format uses:
-- **Username**: `x-access-token` (GitHub's standard for PAT authentication)
+- **Username**: `x-access-token` (a common GitHub convention for PAT authentication)
 - **Password**: Your `GITHUB_TOKEN` value
+
+**Note:** GitHub accepts multiple authentication formats for HTTPS with PATs. This script uses `x-access-token` as the username, which is widely supported and recommended for Replit environments.
 
 ### Step 4: Clear Stale Locks
 
