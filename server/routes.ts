@@ -32,6 +32,8 @@ function logAdminEvent(event: string, detail?: Record<string, unknown>) {
 const adminAuthRateLimiter = createRateLimiter(5, 60_000); // 5 attempts per minute
 const projectApiRateLimiter = createRateLimiter(100, 60_000); // 100 requests per minute
 const ciApiRateLimiter = createRateLimiter(50, 60_000); // 50 requests per minute
+const healthRateLimiter = createRateLimiter(30, 60_000); // 30 requests per minute
+const dossierRateLimiter = createRateLimiter(20, 60_000); // 20 requests per minute
 
 function requireDevAdmin(req: any, res: any): boolean {
   // Rate limit authentication attempts
@@ -118,12 +120,23 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   app.get("/health", async (_req, res) => {
+    if (!healthRateLimiter()) {
+      return res.status(429).json({ error: "Rate limit exceeded" });
+    }
     const dbOk = await storage.getProjects().then(() => true).catch(() => false);
     res.json({ ok: true, db: dbOk, uptime: process.uptime() });
   });
 
   // Enhanced health endpoint with comprehensive checks
-  app.get("/api/health", async (_req: Request, res: Response) => {
+  app.get("/api/health", async (req: Request, res: Response) => {
+    if (!healthRateLimiter()) {
+      return res.status(429).json({ error: "Rate limit exceeded" });
+    }
+    
+    // Basic health check is public, but detailed checks require auth in production
+    const isAuthenticated = process.env.NODE_ENV !== "production" || 
+                            (process.env.API_KEY ? req.headers["x-api-key"] === process.env.API_KEY : true);
+    
     const checks: Record<string, any> = {
       timestamp: new Date().toISOString(),
       uptime_seconds: process.uptime(),
@@ -146,49 +159,52 @@ export async function registerRoutes(
       checks.database = { status: "error", message: err.message || "Database connection failed" };
     }
 
-    // Analyzer check (verify Python analyzer is accessible)
-    try {
-      const analyzerPath = path.join(process.cwd(), "server", "analyzer", "analyzer_cli.py");
-      const analyzerExists = existsSync(analyzerPath);
-      checks.analyzer = {
-        status: analyzerExists ? "ok" : "error",
-        path: analyzerPath,
-        exists: analyzerExists,
-      };
-    } catch (err: any) {
-      checks.analyzer = { status: "error", message: err.message || "Analyzer check failed" };
-    }
+    // Only expose detailed internals to authenticated users
+    if (isAuthenticated) {
+      // Analyzer check (verify Python analyzer is accessible)
+      try {
+        const analyzerPath = path.join(process.cwd(), "server", "analyzer", "analyzer_cli.py");
+        const analyzerExists = existsSync(analyzerPath);
+        checks.analyzer = {
+          status: analyzerExists ? "ok" : "error",
+          path: analyzerPath,
+          exists: analyzerExists,
+        };
+      } catch (err: any) {
+        checks.analyzer = { status: "error", message: err.message || "Analyzer check failed" };
+      }
 
-    // Worker check (CI job processing)
-    try {
-      const jobCounts = await storage.getCiJobCounts();
-      const lastRun = await storage.getLastCompletedRun();
-      checks.worker = {
-        status: "ok",
-        jobs: jobCounts,
-        last_completed: lastRun
-          ? {
-              id: lastRun.id,
-              finished_at: lastRun.finishedAt,
-              repo: `${lastRun.repoOwner}/${lastRun.repoName}`,
-            }
-          : null,
-      };
-    } catch (err: any) {
-      checks.worker = { status: "error", message: err.message || "Worker check failed" };
-    }
+      // Worker check (CI job processing)
+      try {
+        const jobCounts = await storage.getCiJobCounts();
+        const lastRun = await storage.getLastCompletedRun();
+        checks.worker = {
+          status: "ok",
+          jobs: jobCounts,
+          last_completed: lastRun
+            ? {
+                id: lastRun.id,
+                finished_at: lastRun.finishedAt,
+                repo: `${lastRun.repoOwner}/${lastRun.repoName}`,
+              }
+            : null,
+        };
+      } catch (err: any) {
+        checks.worker = { status: "error", message: err.message || "Worker check failed" };
+      }
 
-    // Disk check
-    try {
-      const disk = getDiskStatus();
-      checks.disk = {
-        status: disk.ciTmpDirLowDisk ? "warning" : "ok",
-        ci_tmp_dir: disk.ciTmpDir,
-        free_bytes: disk.ciTmpDirFreeBytes,
-        low_disk: disk.ciTmpDirLowDisk,
-      };
-    } catch (err: any) {
-      checks.disk = { status: "error", message: err.message || "Disk check failed" };
+      // Disk check
+      try {
+        const disk = getDiskStatus();
+        checks.disk = {
+          status: disk.ciTmpDirLowDisk ? "warning" : "ok",
+          ci_tmp_dir: disk.ciTmpDir,
+          free_bytes: disk.ciTmpDirFreeBytes,
+          low_disk: disk.ciTmpDirLowDisk,
+        };
+      } catch (err: any) {
+        checks.disk = { status: "error", message: err.message || "Disk check failed" };
+      }
     }
 
     // Overall status
@@ -308,7 +324,11 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/dossiers/lantern", (_req, res) => {
+  app.get("/api/dossiers/lantern", (req, res) => {
+    if (!dossierRateLimiter()) {
+      return res.status(429).json({ error: "Rate limit exceeded" });
+    }
+    // Public documentation endpoint - no auth required but rate limited
     const p = path.join(process.cwd(), "docs/dossiers/lantern_program_totality_dossier.md");
     if (!existsSync(p)) return res.status(404).json({ error: "Not found" });
     res.type("text/markdown").send(readFileSync(p, "utf8"));
