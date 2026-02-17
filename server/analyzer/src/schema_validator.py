@@ -3,6 +3,10 @@ Schema validation module for PTA outputs.
 
 Validates JSON outputs against their schemas before writing to ensure
 contract compliance.
+
+CRITICAL: All schemas MUST be in shared/schemas directory.
+This is enforced with a fail-fast check on module load to prevent
+schema drift and ensure consistency across the system.
 """
 import json
 from pathlib import Path
@@ -10,14 +14,28 @@ from typing import Any, Dict, List
 import jsonschema
 from jsonschema import validate, ValidationError, Draft7Validator
 
+# SINGLE SOURCE OF TRUTH: All schemas must be in shared/schemas
 SCHEMAS_DIR = Path(__file__).resolve().parents[3] / "shared" / "schemas"
+
+# SECURITY CHECK: Fail-fast if deprecated schema directory exists
+# This prevents schema drift by ensuring there's only one canonical location
+_DEPRECATED_SCHEMA_DIR = Path(__file__).resolve().parent / "schemas"
+if _DEPRECATED_SCHEMA_DIR.exists():
+    raise RuntimeError(
+        f"SCHEMA DRIFT ERROR: Deprecated schema directory exists at {_DEPRECATED_SCHEMA_DIR}. "
+        f"All schemas must be in {SCHEMAS_DIR}. Remove the deprecated directory to proceed. "
+        f"This is intentional fail-fast behavior to prevent inconsistent outputs."
+    )
 
 
 def load_schema(schema_name: str) -> Dict[str, Any]:
-    """Load a JSON schema from the schemas directory."""
+    """Load a JSON schema from the canonical schemas directory."""
     schema_path = SCHEMAS_DIR / schema_name
     if not schema_path.exists():
-        raise FileNotFoundError(f"Schema not found: {schema_path}")
+        raise FileNotFoundError(
+            f"Schema not found: {schema_path}. "
+            f"Expected schema directory: {SCHEMAS_DIR}"
+        )
     
     with open(schema_path, "r") as f:
         return json.load(f)

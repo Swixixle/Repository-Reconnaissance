@@ -177,21 +177,29 @@ export function getConfig(): AppConfig {
 export function getBootReport(config: AppConfig): Record<string, any> {
   const startTime = new Date().toISOString();
   
-  // Read version from package.json
+  // Read version from APP_VERSION env or package.json
   let appVersion = "unknown";
   try {
-    const pkg = require("../package.json");
-    appVersion = pkg.version || "unknown";
+    // Prefer APP_VERSION if set (allows override in deployment)
+    if (process.env.APP_VERSION) {
+      appVersion = process.env.APP_VERSION;
+    } else {
+      const pkg = require("../package.json");
+      appVersion = pkg.version || "unknown";
+    }
   } catch {
     // Fallback if package.json not found
   }
   
+  // Ensure version has pta- prefix for consistency with Python analyzer
+  const toolVersion = appVersion.startsWith("pta-") ? appVersion : `pta-${appVersion}`;
+  
   return {
     timestamp: startTime,
-    app_version: appVersion,
+    tool_version: toolVersion,
     node_env: config.nodeEnv,
-    host: config.host,
-    port: config.port,
+    bind_host: config.host,
+    bind_port: config.port,
     db_configured: !!config.databaseUrl,
     ci_enabled: config.ciWorkerEnabled || !!config.githubWebhookSecret,
     semantic_enabled: config.aiEnabled,

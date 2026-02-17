@@ -333,6 +333,59 @@ def test_my_integration():
 
 ---
 
+## Schema Versioning Policy
+
+### Version Format
+
+Schema versions use a simple `MAJOR.MINOR` format (e.g., `1.0`, `2.0`):
+
+- **MAJOR**: Incremented for breaking changes (field removals, type changes, new required fields)
+- **MINOR**: Incremented for additive changes (new optional fields, new enum values)
+
+Tool version (`tool_version`) uses semantic versioning `pta-MAJOR.MINOR.PATCH` (e.g., `pta-0.1.0`):
+
+- **MAJOR**: Breaking API or contract changes
+- **MINOR**: New features, additive schema changes
+- **PATCH**: Bug fixes, no schema changes
+
+### Backward Compatibility Guarantees
+
+✅ **Additive changes are backward compatible**:
+- Adding new optional fields to existing schemas
+- Adding new evidence tiers or gap types
+- Adding new readiness categories
+
+❌ **Breaking changes require MAJOR version bump**:
+- Removing fields
+- Changing field types (e.g., string → object)
+- Making optional fields required
+- Changing field semantics
+
+### Schema Validation
+
+All JSON outputs are validated against their schemas before being written:
+
+1. **Pre-write validation**: Schema validation runs before file write
+2. **Atomic writes**: Files written to `.tmp` then renamed to prevent partial writes
+3. **Single source of truth**: All schemas in `shared/schemas/` directory
+4. **Drift prevention**: Runtime checks reject duplicate schema directories
+
+### Change Management
+
+**Adding a new field**:
+1. Update schema in `shared/schemas/`
+2. Update generator code to populate field
+3. Increment MINOR schema version if significant
+4. Update this documentation
+
+**Removing a field** (breaking change):
+1. Deprecate field for at least one MAJOR release
+2. Update documentation with deprecation notice
+3. Increment MAJOR schema version
+4. Remove field and update generators
+
+---
+
 ## Feedback & Evolution
 
 Schema evolution is driven by user needs. To propose changes:

@@ -230,6 +230,53 @@ Report security issues to:
 | 2026-02-17 | Added execution boundary hardening | RCE risk: HIGH → LOW |
 | 2026-02-17 | Added repo ingestion limits | DoS risk: HIGH → LOW |
 | 2026-02-17 | Added workdir validation | Path traversal risk: MEDIUM → LOW |
+| 2026-02-17 | Added normalized error codes | Improved incident response |
+| 2026-02-17 | AST-based spawn security checker | Prevents security regressions |
+
+## Security Guarantees and Limitations
+
+### What This System PREVENTS
+
+✅ **Shell Injection**: All subprocess spawns use `shell: false` with validated args arrays. No user input reaches shell interpreter.
+
+✅ **Directory Traversal**: Workdir validation using `realpath()` ensures all file operations stay within `CI_TMP_DIR`. Both `..` paths and symlink escapes are blocked.
+
+✅ **Arbitrary Code Execution**: Repository code is never executed. Analysis is static-only - we read files, never run them.
+
+✅ **DoS via Large Repos**: Hard limits on repo size (250 MB), file count (50K), and single file size (5 MB) prevent resource exhaustion.
+
+✅ **Timeout Attacks**: Hard timeout (default 10 minutes) kills runaway analyzer processes.
+
+✅ **Secret Leakage in Logs**: Git URLs sanitized to mask credentials. Health endpoints don't expose secrets.
+
+✅ **Schema Drift**: Single canonical schema directory (`shared/schemas`) with validation to prevent inconsistent output formats.
+
+### What This System DOES NOT Prevent
+
+❌ **Malicious File Content**: While we don't execute code, we do READ all files. A file with billions of newlines or crafted patterns could still cause high memory usage in the analyzer.
+
+❌ **Supply Chain Attacks**: We don't validate npm/pip packages themselves. If your repo's dependencies have vulnerabilities, we'll report them, but won't block them.
+
+❌ **Data Exfiltration via LLM**: When semantic analysis is enabled (`AI_INTEGRATIONS_OPENAI_API_KEY` set), code snippets are sent to the configured LLM API. This is opt-in and requires explicit configuration.
+
+❌ **Availability Guarantees**: No SLA. A malicious repo could still consume worker time up to the timeout. Multiple such requests could exhaust worker capacity.
+
+❌ **Perfect Accuracy**: Output quality depends on static analysis heuristics and (optionally) LLM quality. False positives and false negatives are expected.
+
+❌ **Network-based Attacks**: The analyzer process doesn't enforce network isolation at the OS level. It SHOULD NOT make network requests, but we don't currently use seccomp or containers to enforce this.
+
+❌ **Privilege Escalation**: We don't run the analyzer in a separate user context or container. It runs as the same user as the Node.js server.
+
+### Attack Surface Summary
+
+| Component | Trust Level | Attack Surface |
+|-----------|-------------|----------------|
+| Node.js Server | Trusted | API endpoints, auth bypass |
+| Python Analyzer | Semi-trusted | Code parsing bugs, regex DoS |
+| Repository Content | Untrusted | Malformed files, symlinks, crafted patterns |
+| LLM API (optional) | External | Data leakage, model manipulation |
+
+**Deployment Recommendation**: Run PTA in a containerized environment with resource limits, network policies, and separate user accounts for defense-in-depth.
 
 ## Future Enhancements
 
