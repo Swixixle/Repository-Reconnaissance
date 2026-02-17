@@ -59,6 +59,83 @@ export async function registerRoutes(
     res.json({ ok: true, db: dbOk, uptime: process.uptime() });
   });
 
+  // Enhanced health endpoint with comprehensive checks
+  app.get("/api/health", async (_req: Request, res: Response) => {
+    const checks: Record<string, any> = {
+      timestamp: new Date().toISOString(),
+      uptime_seconds: process.uptime(),
+      node_env: process.env.NODE_ENV || "development",
+    };
+
+    // Database check
+    try {
+      await storage.getProjects();
+      checks.database = { status: "ok", message: "Database connection successful" };
+    } catch (err: any) {
+      checks.database = { status: "error", message: err.message || "Database connection failed" };
+    }
+
+    // Analyzer check (verify Python analyzer is accessible)
+    try {
+      const analyzerPath = path.join(process.cwd(), "server", "analyzer", "analyzer_cli.py");
+      const analyzerExists = existsSync(analyzerPath);
+      checks.analyzer = {
+        status: analyzerExists ? "ok" : "error",
+        path: analyzerPath,
+        exists: analyzerExists,
+      };
+    } catch (err: any) {
+      checks.analyzer = { status: "error", message: err.message || "Analyzer check failed" };
+    }
+
+    // Worker check (CI job processing)
+    try {
+      const jobCounts = await storage.getCiJobCounts();
+      const lastRun = await storage.getLastCompletedRun();
+      checks.worker = {
+        status: "ok",
+        jobs: jobCounts,
+        last_completed: lastRun
+          ? {
+              id: lastRun.id,
+              finished_at: lastRun.finishedAt,
+              repo: `${lastRun.repoOwner}/${lastRun.repoName}`,
+            }
+          : null,
+      };
+    } catch (err: any) {
+      checks.worker = { status: "error", message: err.message || "Worker check failed" };
+    }
+
+    // Disk check
+    try {
+      const disk = getDiskStatus();
+      checks.disk = {
+        status: disk.ciTmpDirLowDisk ? "warning" : "ok",
+        ci_tmp_dir: disk.ciTmpDir,
+        free_bytes: disk.ciTmpDirFreeBytes,
+        low_disk: disk.ciTmpDirLowDisk,
+      };
+    } catch (err: any) {
+      checks.disk = { status: "error", message: err.message || "Disk check failed" };
+    }
+
+    // Overall status
+    const hasErrors = Object.values(checks).some(
+      (check) => typeof check === "object" && check.status === "error"
+    );
+    const hasWarnings = Object.values(checks).some(
+      (check) => typeof check === "object" && check.status === "warning"
+    );
+
+    const overallStatus = hasErrors ? "unhealthy" : hasWarnings ? "degraded" : "healthy";
+
+    res.status(hasErrors ? 503 : 200).json({
+      status: overallStatus,
+      checks,
+    });
+  });
+
   app.get(api.projects.list.path, async (_req, res) => {
     const projects = await storage.getProjects();
     res.json(projects);
