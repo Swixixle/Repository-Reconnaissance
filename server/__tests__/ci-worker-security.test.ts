@@ -74,7 +74,8 @@ describe('CI Worker Security - Static Analysis', () => {
   });
   
   it('should use spawn with args array pattern', () => {
-    // Ensure spawn is called with separate args array (relaxed pattern)
+    // Ensure spawn is called with separate args variable (not inline command strings)
+    // Pattern matches: spawn(cmd, args, ...) or spawn(pythonBin, args, ...)
     const goodSpawnPattern = /spawn\(\s*\w+\s*,\s*[a-zA-Z_$][\w$]*/g;
     const matches = ciWorkerSource.match(goodSpawnPattern);
     
