@@ -116,6 +116,51 @@ python -m server.analyzer.src --help
 python server/analyzer/analyzer_cli.py --help
 ```
 
+## Production Deployment
+
+Asset-Analyzer is production-ready with comprehensive operational documentation and security hardening.
+
+### Quick Start
+
+For first-time setup, see **[docs/QUICKSTART.md](docs/QUICKSTART.md)** for installation, configuration, and verification.
+
+### Production Deployment
+
+For production deployments, see **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** which covers:
+- Docker Compose production setup
+- Systemd + Nginx configuration
+- Cloud platform deployment (AWS, GCP, Heroku)
+- TLS/HTTPS setup
+- Monitoring and scaling
+
+### Operational Documentation
+
+| Document | Purpose |
+|----------|---------|
+| [QUICKSTART.md](docs/QUICKSTART.md) | Installation and initial setup (5 minutes) |
+| [DEPLOYMENT.md](docs/DEPLOYMENT.md) | Production deployment strategies and configuration |
+| [DISASTER_RECOVERY.md](docs/DISASTER_RECOVERY.md) | Backup, restore, and validation procedures |
+| [INCIDENT_RESPONSE.md](docs/INCIDENT_RESPONSE.md) | Security incident handling and response procedures |
+| [RATE_LIMITING.md](docs/RATE_LIMITING.md) | Rate limiting strategies and implementation |
+| [PRODUCTION_READINESS.md](docs/PRODUCTION_READINESS.md) | Complete implementation summary and deployment checklist |
+
+### Production Requirements
+
+Required environment variables for production deployment:
+
+```bash
+DATABASE_URL=postgresql://user:password@host:5432/dbname
+API_KEY=<32+ character secure key>
+NODE_ENV=production
+```
+
+Generate a secure API key:
+```bash
+openssl rand -hex 32
+```
+
+See [docs/QUICKSTART.md](docs/QUICKSTART.md) for complete configuration guide.
+
 ## Replit Demo (1-click Portal)
 
 For quick access to the analyzer UI, use the **Replit Portal** link:
