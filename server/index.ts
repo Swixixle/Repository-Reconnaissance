@@ -2,8 +2,12 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import { getConfig, getBootReport } from "./config";
 
-// Production startup validation
+// Load and validate configuration
+const config = getConfig();
+
+// Production startup validation (legacy - now handled by getConfig)
 function validateProductionConfig() {
   const isProduction = process.env.NODE_ENV === "production";
   
@@ -207,15 +211,18 @@ app.use((req, res, next) => {
   // Other ports are firewalled. Default to 5000 if not specified.
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || "5000", 10);
   httpServer.listen(
     {
-      port,
-      host: "0.0.0.0",
+      port: config.port,
+      host: config.host,
       reusePort: true,
     },
     () => {
-      log(`serving on port ${port}`);
+      // Emit structured boot report on startup
+      const bootReport = getBootReport(config);
+      console.log(JSON.stringify(bootReport));
+      
+      log(`serving on port ${config.port}`);
     },
   );
 })();

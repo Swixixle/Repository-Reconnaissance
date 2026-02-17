@@ -2,12 +2,137 @@ import { storage } from "./storage";
 import { spawn } from "child_process";
 import path from "path";
 import fs from "fs/promises";
-import { existsSync, mkdirSync, statfsSync } from "fs";
+import { existsSync, mkdirSync, statfsSync, realpathSync } from "fs";
 
 const CI_OUT_BASE = path.resolve(process.cwd(), "out", "ci");
 
+// Repository ingestion limits (DoS controls)
+const MAX_REPO_BYTES = parseInt(process.env.MAX_REPO_BYTES || "262144000", 10); // 250 MB
+const MAX_FILE_COUNT = parseInt(process.env.MAX_FILE_COUNT || "50000", 10);
+const MAX_SINGLE_FILE_BYTES = parseInt(process.env.MAX_SINGLE_FILE_BYTES || "5242880", 10); // 5 MB
+
 function sanitizeGitUrl(url: string): string {
   return url.replace(/\/\/[^@]+@/, "//***@");
+}
+
+/**
+ * Validate workdir path for security:
+ * - Must be under CI_TMP_DIR
+ * - No symlinks in path
+ * - No ".." escapes
+ */
+function validateWorkdir(workDir: string): { valid: boolean; error?: string } {
+  const tmpBase = getCiTmpDir();
+  
+  try {
+    // Resolve to real path and check containment
+    const realWorkDir = realpathSync(workDir);
+    const realTmpBase = realpathSync(tmpBase);
+    
+    // Ensure workdir is under tmpBase
+    if (!realWorkDir.startsWith(realTmpBase + path.sep) && realWorkDir !== realTmpBase) {
+      return {
+        valid: false,
+        error: `workdir_escape: ${workDir} is not under ${tmpBase}`
+      };
+    }
+    
+    // Check for ".." in relative path
+    const relPath = path.relative(tmpBase, workDir);
+    if (relPath.includes("..")) {
+      return {
+        valid: false,
+        error: `workdir_escape: path contains ".." escape`
+      };
+    }
+    
+    return { valid: true };
+  } catch (err) {
+    return {
+      valid: false,
+      error: `workdir_validation_error: ${err}`
+    };
+  }
+}
+
+/**
+ * Check repository size limits (DoS controls).
+ * Returns error if limits exceeded.
+ */
+async function validateRepoLimits(repoDir: string): Promise<{ valid: boolean; error?: string }> {
+  try {
+    let totalBytes = 0;
+    let fileCount = 0;
+    
+    async function walk(dir: string) {
+      const entries = await fs.readdir(dir, { withFileTypes: true });
+      
+      for (const entry of entries) {
+        // Skip .git to avoid counting pack files
+        if (entry.name === ".git") continue;
+        
+        const fullPath = path.join(dir, entry.name);
+        
+        if (entry.isSymlink()) {
+          // Skip symlinks for security
+          continue;
+        }
+        
+        if (entry.isDirectory()) {
+          await walk(fullPath);
+        } else if (entry.isFile()) {
+          fileCount++;
+          
+          if (fileCount > MAX_FILE_COUNT) {
+            return false;
+          }
+          
+          const stats = await fs.stat(fullPath);
+          
+          if (stats.size > MAX_SINGLE_FILE_BYTES) {
+            return false;
+          }
+          
+          totalBytes += stats.size;
+          
+          if (totalBytes > MAX_REPO_BYTES) {
+            return false;
+          }
+        }
+      }
+      
+      return true;
+    }
+    
+    const ok = await walk(repoDir);
+    
+    if (!ok) {
+      if (fileCount > MAX_FILE_COUNT) {
+        return {
+          valid: false,
+          error: `repo_too_many_files: ${fileCount} files exceeds limit ${MAX_FILE_COUNT}`
+        };
+      }
+      if (totalBytes > MAX_REPO_BYTES) {
+        return {
+          valid: false,
+          error: `repo_too_large: ${totalBytes} bytes exceeds limit ${MAX_REPO_BYTES}`
+        };
+      }
+      return {
+        valid: false,
+        error: `repo_file_too_large: single file exceeds limit ${MAX_SINGLE_FILE_BYTES}`
+      };
+    }
+    
+    console.log(`[CI Worker] Repo validated: ${fileCount} files, ${totalBytes} bytes`);
+    return { valid: true };
+  } catch (err) {
+    return {
+      valid: false,
+      error: `repo_validation_error: ${err}`
+    };
+  }
 }
 
 function checkDiskSpace(dir: string): { freeBytes: number; lowDisk: boolean } {
@@ -72,7 +197,37 @@ export async function processOneJob(): Promise<{ processed: boolean; runId?: str
   let tmpDir: string | null = null;
   try {
     await fs.mkdir(runWorkDir, { recursive: true });
+    
+    // SECURITY: Validate workdir containment
+    const workdirCheck = validateWorkdir(runWorkDir);
+    if (!workdirCheck.valid) {
+      const errMsg = workdirCheck.error || "workdir_validation_failed";
+      console.error(`[CI Worker] Workdir validation failed: ${errMsg}`);
+      await storage.updateCiRun(run.id, {
+        status: "FAILED",
+        finishedAt: new Date(),
+        error: errMsg,
+      });
+      await storage.completeJob(job.id, "DEAD", errMsg);
+      return { processed: true, runId: run.id, status: "FAILED" };
+    }
+    
     tmpDir = await fetchRepo(run.repoOwner, run.repoName, run.commitSha, runWorkDir);
+    
+    // SECURITY: Validate repo size limits
+    const limitsCheck = await validateRepoLimits(tmpDir);
+    if (!limitsCheck.valid) {
+      const errMsg = limitsCheck.error || "repo_limits_exceeded";
+      console.error(`[CI Worker] Repo limits check failed: ${errMsg}`);
+      await storage.updateCiRun(run.id, {
+        status: "FAILED",
+        finishedAt: new Date(),
+        error: errMsg,
+      });
+      await storage.completeJob(job.id, "DEAD", errMsg);
+      return { processed: true, runId: run.id, status: "FAILED" };
+    }
+    
     const result = await runAnalyzerOnDir(tmpDir, outDir, run.id);
 
     if (result.success) {
@@ -144,7 +299,10 @@ async function fetchRepo(owner: string, repo: string, sha: string, workDir: stri
 function execCommand(cmd: string, args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
     const safeArgs = args.map((a) => sanitizeGitUrl(a));
-    const proc = spawn(cmd, args, { cwd: process.cwd() });
+    const proc = spawn(cmd, args, { 
+      cwd: process.cwd(),
+      shell: false  // SECURITY: Never use shell execution
+    });
     let stdout = "";
     let stderr = "";
     proc.stdout.on("data", (d) => { stdout += d.toString(); });
@@ -177,6 +335,7 @@ async function runAnalyzerOnDir(
     const proc = spawn(pythonBin, args, {
       cwd: process.cwd(),
       env: { ...process.env },
+      shell: false  // SECURITY: Never use shell execution
     });
 
     const timeout = setTimeout(() => {

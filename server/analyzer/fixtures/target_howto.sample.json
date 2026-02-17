@@ -1,0 +1,74 @@
+{
+  "schema_version": "1.0",
+  "tool_version": "pta-0.1.0",
+  "generated_at": "2026-02-17T00:00:00Z",
+  "target": {
+    "mode": "local",
+    "identifier": "/path/to/project",
+    "run_id": "test-run-123"
+  },
+  "prereqs": [
+    "Node.js",
+    "Python"
+  ],
+  "install_steps": [
+    {
+      "step": "Install Node dependencies",
+      "command": "npm ci",
+      "evidence": {
+        "path": "package-lock.json",
+        "kind": "file_exists",
+        "snippet_hash": "abc123",
+        "display": "package-lock.json"
+      }
+    },
+    {
+      "step": "Install Python dependencies",
+      "command": "pip install .",
+      "evidence": {
+        "path": "pyproject.toml",
+        "kind": "file_exists",
+        "snippet_hash": "def456",
+        "display": "pyproject.toml"
+      }
+    }
+  ],
+  "config": [
+    {
+      "step": "Set up environment variables",
+      "description": "Copy .env.example to .env and configure"
+    }
+  ],
+  "run_dev": [
+    {
+      "step": "Start dev server",
+      "command": "npm run dev",
+      "evidence": {
+        "path": "package.json",
+        "line_start": 5,
+        "snippet_hash": "ghi789",
+        "display": "package.json:5"
+      }
+    }
+  ],
+  "run_prod": [
+    {
+      "step": "Build for production",
+      "command": "npm run build"
+    },
+    {
+      "step": "Start production server",
+      "command": "npm start"
+    }
+  ],
+  "usage_examples": [],
+  "verification_steps": [],
+  "common_failures": [],
+  "unknowns": [],
+  "missing_evidence_requests": [],
+  "completeness": {
+    "total_fields": 10,
+    "populated_fields": 7,
+    "percentage": 70.0
+  }
+}

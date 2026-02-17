@@ -8,6 +8,7 @@ from typing import Dict, Any, List, Optional
 from rich.console import Console
 import openai
 from dotenv import load_dotenv
+from datetime import datetime, timezone
 
 from .core.acquire import acquire_target, AcquireResult
 from .core.replit_profile import ReplitProfiler
@@ -15,7 +16,8 @@ from .core.evidence import make_evidence, make_evidence_from_line, make_file_exi
 from .core.unknowns import compute_known_unknowns
 from .core.adapter import build_evidence_pack, save_evidence_pack
 from .core.render import render_report, save_report, assert_pack_written
-from .core.operate import build_operate, validate_operate
+from .core.operate import build_operate, validate_operate, TOOL_VERSION, OPERATE_SCHEMA_VERSION
+from .schema_validator import validate_operate_json, validate_target_howto_json
 
 load_dotenv()
 
@@ -115,8 +117,11 @@ class Analyzer:
             dossier, claims = await self.generate_dossier(packs, howto)
             claims = self._verify_claims_evidence(claims)
 
+        # Add metadata to howto for schema compliance
+        howto = self._add_howto_metadata(howto)
+        
         self.save_json("index.json", file_index)
-        self.save_json("target_howto.json", howto)
+        self.save_json_with_validation("target_howto.json", howto, validate_target_howto_json)
         self.save_json("claims.json", claims)
         replit_detected = self.replit_profile.get("replit_detected", False) if self.replit_profile else False
         replit_detection_ev = self.replit_profile.get("replit_detection_evidence", []) if self.replit_profile else []
@@ -152,7 +157,7 @@ class Analyzer:
             self.console.print(f"  [yellow]operate.json validation warnings: {len(op_errors)}[/yellow]")
             for e in op_errors[:5]:
                 self.console.print(f"    - {e}")
-        self.save_json("operate.json", operate)
+        self.save_json_with_validation("operate.json", operate, validate_operate_json)
         self.console.print(f"  operate.json saved ({len(operate.get('gaps', []))} gaps, "
                            f"boot={operate.get('readiness', {}).get('boot', {}).get('score', 0)}%)")
 
@@ -1137,3 +1142,33 @@ RULES:
     def save_json(self, filename: str, data: Any):
         with open(self.output_dir / filename, "w") as f:
             json.dump(data, f, indent=2, default=str)
+
+    def save_json_with_validation(self, filename: str, data: Any, validator_func):
+        """Save JSON with schema validation. Raises error if validation fails."""
+        errors = validator_func(data)
+        if errors:
+            self.console.print(f"[red bold]FATAL: {filename} failed schema validation:[/red bold]")
+            for error in errors[:10]:
+                self.console.print(f"  [red]- {error}[/red]")
+            raise ValueError(f"{filename} failed schema validation with {len(errors)} error(s)")
+        
+        with open(self.output_dir / filename, "w") as f:
+            json.dump(data, f, indent=2, default=str)
+        self.console.print(f"  [green]✓ {filename} validated against schema[/green]")
+
+    def _add_howto_metadata(self, howto: Dict[str, Any]) -> Dict[str, Any]:
+        """Add required metadata fields to target_howto.json for schema compliance."""
+        # Create a new dict with metadata first
+        result = {
+            "schema_version": "1.0",
+            "tool_version": f"pta-{TOOL_VERSION}",
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "target": {
+                "mode": self.mode,
+                "identifier": self.source,
+                "run_id": self.acquire_result.run_id if self.acquire_result else "unknown"
+            }
+        }
+        # Add all howto fields
+        result.update(howto)
+        return result
