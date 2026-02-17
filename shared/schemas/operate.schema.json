@@ -1,0 +1,247 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://asset-analyzer.example.com/schemas/operate.schema.json",
+  "title": "Operate JSON Schema",
+  "description": "Schema for operate.json - the operational dashboard output from PTA analyzer",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "tool_version",
+    "generated_at",
+    "mode",
+    "boot",
+    "integrate",
+    "deploy",
+    "snapshot",
+    "readiness",
+    "gaps",
+    "runbooks"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Schema version for this output format",
+      "pattern": "^[0-9]+\\.[0-9]+$"
+    },
+    "tool_version": {
+      "type": "string",
+      "description": "Version of the PTA tool that generated this output",
+      "pattern": "^pta-"
+    },
+    "generated_at": {
+      "type": "string",
+      "description": "ISO 8601 timestamp of when this output was generated",
+      "format": "date-time"
+    },
+    "mode": {
+      "type": "string",
+      "description": "Analysis mode (github, local, replit, etc.)",
+      "enum": ["github", "local", "replit"]
+    },
+    "boot": {
+      "type": "object",
+      "description": "Boot and startup information",
+      "required": ["install", "dev", "prod", "ports"],
+      "properties": {
+        "install": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/step" }
+        },
+        "dev": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/step" }
+        },
+        "prod": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/step" }
+        },
+        "ports": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/item" }
+        }
+      }
+    },
+    "integrate": {
+      "type": "object",
+      "description": "Integration points (API endpoints, env vars, auth)",
+      "required": ["endpoints", "env_vars", "auth"],
+      "properties": {
+        "base_path": { "$ref": "#/definitions/item" },
+        "endpoints": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/endpoint" }
+        },
+        "env_vars": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/envVar" }
+        },
+        "auth": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/item" }
+        }
+      }
+    },
+    "deploy": {
+      "type": "object",
+      "description": "Deployment configuration and hints"
+    },
+    "snapshot": {
+      "type": "object",
+      "description": "Runtime snapshot information"
+    },
+    "readiness": {
+      "type": "object",
+      "description": "Readiness scores across categories",
+      "required": ["boot", "integration", "deployment", "observability"],
+      "properties": {
+        "boot": { "$ref": "#/definitions/readinessCategory" },
+        "integration": { "$ref": "#/definitions/readinessCategory" },
+        "deployment": { "$ref": "#/definitions/readinessCategory" },
+        "observability": { "$ref": "#/definitions/readinessCategory" }
+      }
+    },
+    "gaps": {
+      "type": "array",
+      "description": "Identified operational gaps",
+      "items": { "$ref": "#/definitions/gap" }
+    },
+    "runbooks": {
+      "type": "object",
+      "description": "Operational runbooks",
+      "required": ["local_dev", "production", "integration", "troubleshooting"],
+      "properties": {
+        "local_dev": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/step" }
+        },
+        "production": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/step" }
+        },
+        "integration": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/step" }
+        },
+        "troubleshooting": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/step" }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "evidence": {
+      "type": "object",
+      "required": ["path", "snippet_hash"],
+      "properties": {
+        "path": { "type": "string" },
+        "kind": { "type": "string" },
+        "line_start": { "type": "integer" },
+        "line_end": { "type": "integer" },
+        "snippet_hash": { "type": "string" },
+        "display": { "type": "string" }
+      }
+    },
+    "item": {
+      "type": "object",
+      "required": ["status", "value", "evidence"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["EVIDENCED", "INFERRED", "UNKNOWN"]
+        },
+        "value": { "type": "string" },
+        "evidence": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/evidence" }
+        },
+        "unknown_reason": { "type": "string" }
+      }
+    },
+    "step": {
+      "type": "object",
+      "required": ["status", "evidence"],
+      "properties": {
+        "step": { "type": "integer" },
+        "status": {
+          "type": "string",
+          "enum": ["EVIDENCED", "INFERRED", "UNKNOWN"]
+        },
+        "action": { "type": "string" },
+        "command": { "type": "string" },
+        "evidence": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/evidence" }
+        },
+        "unknown_reason": { "type": "string" }
+      }
+    },
+    "endpoint": {
+      "type": "object",
+      "required": ["method", "path", "status", "evidence"],
+      "properties": {
+        "method": { "type": "string" },
+        "path": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["EVIDENCED", "INFERRED", "UNKNOWN"]
+        },
+        "evidence": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/evidence" }
+        }
+      }
+    },
+    "envVar": {
+      "type": "object",
+      "required": ["name", "status", "evidence"],
+      "properties": {
+        "name": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["EVIDENCED", "INFERRED", "UNKNOWN"]
+        },
+        "required": { "type": "boolean" },
+        "default": { "type": "string" },
+        "evidence": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/evidence" }
+        }
+      }
+    },
+    "readinessCategory": {
+      "type": "object",
+      "required": ["score", "reasons"],
+      "properties": {
+        "score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "reasons": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "gap": {
+      "type": "object",
+      "required": ["rank", "title", "severity", "action"],
+      "properties": {
+        "rank": { "type": "integer" },
+        "title": { "type": "string" },
+        "severity": {
+          "type": "string",
+          "enum": ["high", "medium", "low"]
+        },
+        "status": { "type": "string" },
+        "evidence": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/evidence" }
+        },
+        "action": { "type": "string" }
+      }
+    }
+  }
+}

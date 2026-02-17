@@ -1,0 +1,153 @@
+{
+  "schema_version": "1.0",
+  "tool_version": "pta-0.1.0",
+  "generated_at": "2026-02-17T00:00:00Z",
+  "mode": "local",
+  "boot": {
+    "install": [
+      {
+        "status": "INFERRED",
+        "action": "Install Node.js dependencies",
+        "command": "npm ci",
+        "evidence": [
+          {
+            "path": "package-lock.json",
+            "kind": "file_exists",
+            "snippet_hash": "abc123",
+            "display": "package-lock.json"
+          }
+        ]
+      }
+    ],
+    "dev": [
+      {
+        "status": "EVIDENCED",
+        "action": "Start dev server",
+        "command": "npm run dev",
+        "evidence": [
+          {
+            "path": "package.json",
+            "line_start": 5,
+            "snippet_hash": "def456",
+            "display": "package.json:5"
+          }
+        ]
+      }
+    ],
+    "prod": [],
+    "ports": [
+      {
+        "status": "EVIDENCED",
+        "value": "5000",
+        "evidence": [
+          {
+            "path": "server/index.ts",
+            "line_start": 10,
+            "snippet_hash": "ghi789",
+            "display": "server/index.ts:10"
+          }
+        ]
+      }
+    ]
+  },
+  "integrate": {
+    "base_path": {
+      "status": "EVIDENCED",
+      "value": "/api",
+      "evidence": []
+    },
+    "endpoints": [
+      {
+        "method": "GET",
+        "path": "/api/health",
+        "status": "EVIDENCED",
+        "evidence": [
+          {
+            "path": "server/routes.ts",
+            "line_start": 20,
+            "snippet_hash": "jkl012",
+            "display": "server/routes.ts:20"
+          }
+        ]
+      }
+    ],
+    "env_vars": [
+      {
+        "name": "DATABASE_URL",
+        "status": "EVIDENCED",
+        "required": true,
+        "evidence": [
+          {
+            "path": "server/db.ts",
+            "line_start": 5,
+            "snippet_hash": "mno345",
+            "display": "server/db.ts:5"
+          }
+        ]
+      }
+    ],
+    "auth": []
+  },
+  "deploy": {
+    "docker": {
+      "status": "EVIDENCED",
+      "value": "Dockerfile",
+      "evidence": []
+    },
+    "platform_hints": [],
+    "build_commands": []
+  },
+  "snapshot": {
+    "runtime": [
+      {
+        "status": "EVIDENCED",
+        "value": "node",
+        "evidence": []
+      }
+    ],
+    "observability": [],
+    "migrations": []
+  },
+  "readiness": {
+    "boot": {
+      "score": 100,
+      "reasons": ["1 boot item(s) evidenced/inferred"]
+    },
+    "integration": {
+      "score": 100,
+      "reasons": ["2 integration item(s) evidenced/inferred"]
+    },
+    "deployment": {
+      "score": 50,
+      "reasons": ["1 deployment item(s) evidenced/inferred"]
+    },
+    "observability": {
+      "score": 0,
+      "reasons": ["0 observability item(s) evidenced/inferred"]
+    }
+  },
+  "gaps": [
+    {
+      "rank": 1,
+      "title": "No observability tooling detected",
+      "severity": "low",
+      "status": "UNKNOWN",
+      "evidence": [],
+      "action": "Add logging and monitoring"
+    }
+  ],
+  "runbooks": {
+    "local_dev": [
+      {
+        "step": 1,
+        "status": "INFERRED",
+        "action": "Install Node.js dependencies",
+        "command": "npm ci",
+        "evidence": []
+      }
+    ],
+    "production": [],
+    "integration": [],
+    "troubleshooting": []
+  }
+}
