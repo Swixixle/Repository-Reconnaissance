@@ -21,8 +21,10 @@ function sanitizeGitUrl(url: string): string {
  * - Must be under CI_TMP_DIR
  * - No symlinks in path
  * - No ".." escapes
+ * 
+ * Exported for testing.
  */
-function validateWorkdir(workDir: string): { valid: boolean; error?: string; errorCode?: string } {
+export function validateWorkdir(workDir: string): { valid: boolean; error?: string; errorCode?: string } {
   const tmpBase = getCiTmpDir();
   
   try {
