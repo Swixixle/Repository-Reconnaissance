@@ -70,7 +70,7 @@ async function validateRepoLimits(repoDir: string): Promise<{ valid: boolean; er
     let totalBytes = 0;
     let fileCount = 0;
     
-    async function walk(dir: string) {
+    const walk = async (dir: string): Promise<boolean> => {
       const entries = await fs.readdir(dir, { withFileTypes: true });
       
       for (const entry of entries) {
@@ -79,13 +79,14 @@ async function validateRepoLimits(repoDir: string): Promise<{ valid: boolean; er
         
         const fullPath = path.join(dir, entry.name);
         
-        if (entry.isSymlink()) {
+        if (entry.isSymbolicLink()) {
           // Skip symlinks for security
           continue;
         }
         
         if (entry.isDirectory()) {
-          await walk(fullPath);
+          const result = await walk(fullPath);
+          if (!result) return false;
         } else if (entry.isFile()) {
           fileCount++;
           
@@ -108,7 +109,7 @@ async function validateRepoLimits(repoDir: string): Promise<{ valid: boolean; er
       }
       
       return true;
-    }
+    };
     
     const ok = await walk(repoDir);
     
