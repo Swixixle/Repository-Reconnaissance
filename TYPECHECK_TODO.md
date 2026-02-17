@@ -73,11 +73,15 @@ The `check` script runs `tsc` but doesn't fail CI if errors exist. Instead:
 
 ### Known Type Errors (as of 2026-02-17)
 
+*Note: Run `npm run check 2>&1 | tee typecheck-output.txt` to populate this table with current error counts.*
+
+This table will be updated when type checking is run in CI:
+
 | File/Area | Error Count | Issue Type | Priority |
 |-----------|-------------|------------|----------|
-| TBD | TBD | TBD | Low |
+| *To be populated* | - | - | - |
 
-*Run `npm run check` to see current errors*
+**Action Item**: Run type check and update this table in a follow-up commit.
 
 ## Contributing
 

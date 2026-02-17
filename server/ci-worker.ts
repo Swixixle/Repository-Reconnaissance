@@ -341,6 +341,9 @@ async function runAnalyzerOnDir(
 
   const args = ["-m", "server.analyzer.analyzer_cli", "analyze", repoDir, "--output-dir", outDir];
   console.log(`[CI Worker] Running analyzer for run=${runId}`);
+  
+  // Use consistent timeout value
+  const timeoutMs = Number(process.env.ANALYZER_TIMEOUT_MS) || 10 * 60 * 1000;
 
   return new Promise((resolve) => {
     let stderr = "";
@@ -355,9 +358,9 @@ async function runAnalyzerOnDir(
       resolve({ 
         success: false, 
         errorCode: CI_ERROR_CODES.ANALYZER_TIMEOUT,
-        error: `${CI_ERROR_CODES.ANALYZER_TIMEOUT}: exceeded ${Number(process.env.ANALYZER_TIMEOUT_MS) || 600000}ms` 
+        error: `${CI_ERROR_CODES.ANALYZER_TIMEOUT}: exceeded ${timeoutMs}ms` 
       });
-    }, Number(process.env.ANALYZER_TIMEOUT_MS) || 10 * 60 * 1000);
+    }, timeoutMs);
 
     proc.stdout.on("data", (d) => {
       console.log(`[CI Analyzer ${runId}]: ${d}`);

@@ -1157,13 +1157,16 @@ RULES:
                 json.dump(data, f, indent=2, default=str)
             # Atomic rename
             shutil.move(tmp_path, final_path)
-        except Exception:
+        except Exception as write_error:
             # Clean up tmp file on error
             try:
                 os.unlink(tmp_path)
-            except Exception:
-                pass
-            raise
+            except Exception as cleanup_error:
+                # Log cleanup failure but don't suppress original error
+                self.console.print(
+                    f"[yellow]Warning: Failed to cleanup tmp file {tmp_path}: {cleanup_error}[/yellow]"
+                )
+            raise write_error
 
     def save_json_with_validation(self, filename: str, data: Any, validator_func):
         """

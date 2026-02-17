@@ -5,6 +5,8 @@ Validates JSON outputs against their schemas before writing to ensure
 contract compliance.
 
 CRITICAL: All schemas MUST be in shared/schemas directory.
+This is enforced with a fail-fast check on module load to prevent
+schema drift and ensure consistency across the system.
 """
 import json
 from pathlib import Path
@@ -15,12 +17,14 @@ from jsonschema import validate, ValidationError, Draft7Validator
 # SINGLE SOURCE OF TRUTH: All schemas must be in shared/schemas
 SCHEMAS_DIR = Path(__file__).resolve().parents[3] / "shared" / "schemas"
 
-# Security check: ensure no alternate schema directories exist
+# SECURITY CHECK: Fail-fast if deprecated schema directory exists
+# This prevents schema drift by ensuring there's only one canonical location
 _DEPRECATED_SCHEMA_DIR = Path(__file__).resolve().parent / "schemas"
 if _DEPRECATED_SCHEMA_DIR.exists():
     raise RuntimeError(
         f"SCHEMA DRIFT ERROR: Deprecated schema directory exists at {_DEPRECATED_SCHEMA_DIR}. "
-        f"All schemas must be in {SCHEMAS_DIR}. Remove the deprecated directory to proceed."
+        f"All schemas must be in {SCHEMAS_DIR}. Remove the deprecated directory to proceed. "
+        f"This is intentional fail-fast behavior to prevent inconsistent outputs."
     )
 
 

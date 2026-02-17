@@ -65,11 +65,11 @@ function checkSpawnCall(node: ts.CallExpression, sourceFile: ts.SourceFile) {
   // We need to check if the options object has shell: false
   
   if (node.arguments.length < 3) {
-    // No options object, this is a violation
+    // Missing options argument - shell: false must be explicitly set
     const { line, character } = sourceFile.getLineAndCharacterOfPosition(node.getStart());
     violations.push({
       type: 'missing_shell_false',
-      message: 'spawn() call missing options object with shell: false',
+      message: 'spawn() call missing options argument with shell: false',
       line: line + 1,
       column: character + 1,
     });
