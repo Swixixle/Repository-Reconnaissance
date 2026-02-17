@@ -2,15 +2,16 @@
 Version information for PTA.
 
 Single source of truth for version numbers, read from pyproject.toml.
+All outputs emit tool_version as "pta-{version}" for consistency.
 """
 import re
 from pathlib import Path
 from typing import Optional
 
 
-def get_tool_version() -> str:
+def get_raw_version() -> str:
     """
-    Get the PTA tool version from pyproject.toml.
+    Get the raw version from pyproject.toml.
     
     Returns:
         Version string (e.g., "0.1.0")
@@ -30,20 +31,22 @@ def get_tool_version() -> str:
     return "0.1.0"  # fallback
 
 
-def get_schema_version() -> str:
+def get_tool_version() -> str:
     """
-    Get the schema version for operate.json and target_howto.json.
-    
-    This is separate from the tool version as it represents the
-    output contract version, not the implementation version.
+    Get the PTA tool version with pta- prefix for all outputs.
     
     Returns:
-        Schema version string (e.g., "1.0")
+        Version string with prefix (e.g., "pta-0.1.0")
     """
-    return "1.0"
+    return f"pta-{get_raw_version()}"
 
+
+# Schema version constants - single source of truth
+OPERATE_SCHEMA_VERSION = "1.0"
+TARGET_HOWTO_SCHEMA_VERSION = "1.0"
+CLAIMS_SCHEMA_VERSION = "1.0"
+COVERAGE_SCHEMA_VERSION = "1.0"
 
 # Module-level constants for backward compatibility
-TOOL_VERSION = get_tool_version()
-OPERATE_SCHEMA_VERSION = get_schema_version()
-TARGET_HOWTO_SCHEMA_VERSION = get_schema_version()
+TOOL_VERSION = get_raw_version()  # Keep for internal use
+PTA_VERSION = get_tool_version()  # Use this in all outputs

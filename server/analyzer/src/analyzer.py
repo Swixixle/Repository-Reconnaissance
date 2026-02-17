@@ -17,7 +17,7 @@ from .core.unknowns import compute_known_unknowns
 from .core.adapter import build_evidence_pack, save_evidence_pack
 from .core.render import render_report, save_report, assert_pack_written
 from .core.operate import build_operate, validate_operate
-from .version import TOOL_VERSION, OPERATE_SCHEMA_VERSION, TARGET_HOWTO_SCHEMA_VERSION
+from .version import PTA_VERSION, OPERATE_SCHEMA_VERSION, TARGET_HOWTO_SCHEMA_VERSION
 from .schema_validator import validate_operate_json, validate_target_howto_json
 
 load_dotenv()
@@ -1141,11 +1141,37 @@ RULES:
         return "\n".join(lines)
 
     def save_json(self, filename: str, data: Any):
-        with open(self.output_dir / filename, "w") as f:
-            json.dump(data, f, indent=2, default=str)
+        """Save JSON atomically using tmp file + rename."""
+        import tempfile
+        import shutil
+        
+        final_path = self.output_dir / filename
+        tmp_fd, tmp_path = tempfile.mkstemp(
+            suffix='.tmp',
+            prefix=f'.{filename}.',
+            dir=self.output_dir
+        )
+        
+        try:
+            with os.fdopen(tmp_fd, 'w') as f:
+                json.dump(data, f, indent=2, default=str)
+            # Atomic rename
+            shutil.move(tmp_path, final_path)
+        except Exception:
+            # Clean up tmp file on error
+            try:
+                os.unlink(tmp_path)
+            except Exception:
+                pass
+            raise
 
     def save_json_with_validation(self, filename: str, data: Any, validator_func):
-        """Save JSON with schema validation. Raises error if validation fails."""
+        """
+        Save JSON with schema validation and atomic write.
+        
+        Validates first, then writes atomically using tmp file + rename.
+        Raises error if validation fails - no file is written.
+        """
         errors = validator_func(data)
         if errors:
             self.console.print(f"[red bold]FATAL: {filename} failed schema validation:[/red bold]")
@@ -1153,8 +1179,8 @@ RULES:
                 self.console.print(f"  [red]- {error}[/red]")
             raise ValueError(f"{filename} failed schema validation with {len(errors)} error(s)")
         
-        with open(self.output_dir / filename, "w") as f:
-            json.dump(data, f, indent=2, default=str)
+        # Validation passed - now save atomically
+        self.save_json(filename, data)
         self.console.print(f"  [green]✓ {filename} validated against schema[/green]")
 
     def _add_howto_metadata(self, howto: Dict[str, Any]) -> Dict[str, Any]:
@@ -1162,7 +1188,7 @@ RULES:
         # Create a new dict with metadata first
         result = {
             "schema_version": TARGET_HOWTO_SCHEMA_VERSION,
-            "tool_version": f"pta-{TOOL_VERSION}",
+            "tool_version": PTA_VERSION,
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "target": {
                 "mode": self.mode,

@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 
 from .evidence import make_evidence_from_line, make_file_exists_evidence, make_evidence
-from ..version import TOOL_VERSION, OPERATE_SCHEMA_VERSION
+from ..version import PTA_VERSION, OPERATE_SCHEMA_VERSION
 
 REQUIRED_COVERAGE_KEYS = {"analyzed_files", "total_files_seen"}
 
@@ -819,7 +819,7 @@ def build_operate(repo_dir: Path, file_index,
     runbooks = _build_runbooks(boot, integrate, deploy)
 
     return {
-        "tool_version": f"pta-{TOOL_VERSION}",
+        "tool_version": PTA_VERSION,
         "schema_version": OPERATE_SCHEMA_VERSION,
         "mode": mode,
         "generated_at": datetime.now(timezone.utc).isoformat(),
