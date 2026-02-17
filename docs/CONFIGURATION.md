@@ -4,12 +4,71 @@ This document describes all configuration options for the PTA (Program Totality 
 
 ## Environment Variable Precedence
 
-**Production:** Only `process.env` (platform environment variables) are used. `.env` files are **completely ignored**.
+Configuration is loaded from environment variables with different behavior in development vs production.
 
-**Development:** Variables are loaded in this order (later sources override earlier):
-1. System environment variables
-2. `.env` file (if present)
-3. Explicit overrides (e.g., command line)
+### Development vs Production Behavior
+
+| Aspect | Development (`NODE_ENV=development`) | Production (`NODE_ENV=production`) |
+|--------|--------------------------------------|-------------------------------------|
+| `.env` file | ✅ Loaded and merged with process.env | ❌ Completely ignored |
+| Invalid PORT | ⚠️ Warns and falls back to 5000 | ❌ Fails fast with error |
+| Missing required vars | ⚠️ Warns but continues | ❌ Fails fast with error list |
+| Validation | Relaxed | Strict |
+
+### Precedence Table (Development Only)
+
+In development mode, variables are resolved in this order (later sources override earlier):
+
+| Priority | Source | Example | Notes |
+|----------|--------|---------|-------|
+| 1 (lowest) | Hardcoded defaults | `PORT=5000` | Built into code |
+| 2 | `.env` file | `PORT=3000` | Loaded by dotenv if present |
+| 3 (highest) | System environment | `PORT=8080` | Export or shell assignment |
+
+In production, only system environment variables are used (priority 3 only).
+
+### Example Scenarios
+
+**Scenario 1: Development with `.env` file**
+```bash
+# .env file
+PORT=3000
+DATABASE_URL=postgresql://localhost/dev
+
+# Shell
+export PORT=8080
+
+# Result: PORT=8080 (system env overrides .env)
+```
+
+**Scenario 2: Production**
+```bash
+# .env file (ignored!)
+PORT=3000
+
+# Shell
+export PORT=8080
+
+# Result: PORT=8080 (only source used)
+```
+
+**Scenario 3: Invalid PORT in development**
+```bash
+export PORT=abc
+
+# Result: 
+# - Logs warning: "Invalid PORT 'abc', falling back to 5000"
+# - Server binds to port 5000
+```
+
+**Scenario 4: Invalid PORT in production**
+```bash
+export PORT=abc
+
+# Result:
+# - Logs error: "Invalid PORT environment variable: 'abc'"
+# - Server exits with code 1 (fails fast)
+```
 
 ## Core Configuration
 
@@ -81,16 +140,23 @@ On successful startup, the server emits a **single JSON log line** with boot inf
 ```json
 {
   "timestamp": "2026-02-17T00:00:00.000Z",
-  "app_version": "1.0.0",
+  "tool_version": "pta-1.0.0",
   "node_env": "production",
-  "host": "0.0.0.0",
-  "port": 5000,
+  "bind_host": "0.0.0.0",
+  "bind_port": 5000,
   "db_configured": true,
   "ci_enabled": true,
   "semantic_enabled": false,
   "force_http": false
 }
 ```
+
+**Fields:**
+- `tool_version`: PTA version with `pta-` prefix (matches Python analyzer)
+- `bind_host`, `bind_port`: Actual bind configuration (use these for health checks)
+- `db_configured`: `true` if `DATABASE_URL` is set
+- `ci_enabled`: `true` if CI worker or webhooks are enabled
+- `semantic_enabled`: `true` if AI/LLM features are configured
 
 This can be parsed and ingested by logging infrastructure for monitoring.
 
