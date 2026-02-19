@@ -1,5 +1,5 @@
 /**
- * Centralized configuration module for PTA server.
+ * Centralized configuration module for RR server.
  * 
  * Handles:
  * - Port binding configuration
@@ -191,8 +191,8 @@ export function getBootReport(config: AppConfig): Record<string, any> {
     // Fallback if package.json not found
   }
   
-  // Ensure version has pta- prefix for consistency with Python analyzer
-  const toolVersion = appVersion.startsWith("pta-") ? appVersion : `pta-${appVersion}`;
+  // Ensure version has rr- prefix for consistency with Python analyzer
+  const toolVersion = appVersion.startsWith("rr-") ? appVersion : `rr-${appVersion}`;
   
   return {
     timestamp: startTime,
