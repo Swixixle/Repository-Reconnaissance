@@ -1,0 +1,14 @@
+{
+  "repo": "demo-repo",
+  "generated_at": "2026-02-22T00:00:00Z",
+  "capabilities": ["api", "auth", "webhooks"],
+  "unknowns": [],
+  "risks": [
+    {"title": "No rate limiting", "severity": "med"},
+    {"title": "Missing CSP", "severity": "low"}
+  ],
+  "dependencies": [
+    {"name": "express", "versionRange": "^4.18.2", "type": "npm"},
+    {"name": "helmet", "versionRange": "^6.0.0", "type": "npm"}
+  ]
+}

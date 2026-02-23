@@ -1,0 +1,14 @@
+{
+  "repo": "demo-repo",
+  "generated_at": "2026-02-20T00:00:00Z",
+  "capabilities": ["api", "auth"],
+  "unknowns": [
+    {"title": "Unclear data retention policy", "severity": "med"}
+  ],
+  "risks": [
+    {"title": "No rate limiting", "severity": "high"}
+  ],
+  "dependencies": [
+    {"name": "express", "versionRange": "^4.18.0", "type": "npm"}
+  ]
+}

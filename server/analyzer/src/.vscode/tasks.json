@@ -1,0 +1,14 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run analyzer with history integration",
+			"type": "shell",
+			"command": "python3 analyzer_cli.py analyze --include-history --history-top 3 --history-since 30d --output-dir /tmp/analyzer-out-test",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		}
+	]
+}

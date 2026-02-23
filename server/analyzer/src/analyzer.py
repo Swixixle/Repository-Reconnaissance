@@ -41,6 +41,8 @@ class Analyzer:
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.packs_dir.mkdir(parents=True, exist_ok=True)
+from .history_integration import compute_hotspots_via_node, HistoryOptions
+
 
         self.client = None
         if not no_llm:
@@ -64,7 +66,7 @@ class Analyzer:
             pass
         return None
 
-    async def run(self):
+    async def run(self, *, include_history=False, history_since="90d", history_top=15, history_include=None, history_exclude=None):
         self.console.print("[bold]Step 1: Acquiring target...[/bold]")
         self.acquire_result = acquire_target(
             target=self.source if self.mode != "replit" else None,
@@ -177,6 +179,27 @@ class Analyzer:
         unknown_count = len([u for u in known_unknowns if u["status"] == "UNKNOWN"])
         self.console.print(f"  {verified_count} VERIFIED, {unknown_count} UNKNOWN out of {len(known_unknowns)} categories")
 
+        # --- Change Hotspots Integration ---
+        change_hotspots = None
+        if include_history:
+            repo_path = str(self.repo_dir)
+            try:
+                opts = HistoryOptions(
+                    repo_path=Path(repo_path).resolve(),
+                    since=history_since,
+                    top=max(1, history_top),
+                    include_globs=_parse_globs(history_include),
+                    exclude_globs=_parse_globs(history_exclude),
+                )
+                report = compute_hotspots_via_node(opts)
+                change_hotspots = {
+                    "window": report["window"],
+                    "totals": report["totals"],
+                    "top": report.get("hotspots", [])[:history_top],
+                }
+            except Exception as e:
+                raise RuntimeError(f"Failed to compute git hotspots: {e}\nMake sure Node.js 22+ is installed and the Node CLI artifact is built.")
+
         self.console.print("[bold]Step 7: Building EvidencePack v1...[/bold]")
         evidence_pack = build_evidence_pack(
             howto=howto,
@@ -192,6 +215,8 @@ class Analyzer:
             run_id=self.acquire_result.run_id if self.acquire_result else None,
             skipped_files=self._skipped_count,
         )
+        if change_hotspots:
+            evidence_pack["change_hotspots"] = change_hotspots
         pack_path = save_evidence_pack(evidence_pack, self.output_dir)
         assert_pack_written(pack_path)
         self.console.print(f"  EvidencePack saved to {pack_path}")

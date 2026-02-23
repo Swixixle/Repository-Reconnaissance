@@ -1,0 +1,7 @@
+{
+  "name": "dummy-b",
+  "version": "1.0.0",
+  "dependencies": {
+    "dummy-c": "file:../dummy-c"
+  }
+}

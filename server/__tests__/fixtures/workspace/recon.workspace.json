@@ -1,0 +1,11 @@
+{
+  "repos": [
+    {"name": "dummy-a", "path": "./dummy-a"},
+    {"name": "dummy-b", "path": "./dummy-b"},
+    {"name": "dummy-c", "path": "./dummy-c"}
+  ],
+  "contracts": [
+    {"from": "dummy-a", "to": "dummy-b", "type": "npm", "name": "dummy-b"},
+    {"from": "dummy-c", "to": "dummy-a", "type": "http", "route": "/api/verify"}
+  ]
+}

@@ -174,6 +174,27 @@ def _render_engineer(pack: Dict[str, Any]) -> str:
     lines.append("---")
     lines.append("")
 
+    # --- Change Hotspots Section ---
+    ch = pack.get("change_hotspots")
+    if ch:
+        lines.append(f"## Change hotspots (last {ch['window'].get('since', '?')})")
+        lines.append("")
+        top = ch.get("top") or []
+        if not top:
+            lines.append("No hotspots detected in the selected window.")
+        else:
+            lines.append("| Path | Score | Commits | Churn | Authors | Flags |")
+            lines.append("| ---- | ----- | ------- | ----- | ------- | ----- |")
+            for h in top:
+                score = "{:.3f}".format(h.get("score", 0))
+                churn = h.get("churn", {})
+                added = churn.get("added") or 0
+                deleted = churn.get("deleted") or 0
+                churn_total = added + deleted
+                flags = ", ".join(h.get("flags") or [])
+                lines.append(f"| {h.get('path','')} | {score} | {h.get('commits',0)} | {churn_total} | {h.get('authors',0)} | {flags} |")
+        lines.append("")
+
     verified_sections = _get_verified_sections(pack)
     for section_name, claims in sorted(verified_sections.items()):
         lines.append(f"## Verified: {section_name}")

@@ -38,6 +38,11 @@ def analyze(
     root: Optional[str] = typer.Option(None, "--root", help="Subdirectory within target to scope analysis"),
     no_llm: bool = typer.Option(False, "--no-llm", help="Deterministic mode: skip LLM calls, produce only profiler/indexer outputs"),
     mode: RenderMode = typer.Option(RenderMode.engineer, "--mode", help="Report rendering mode: engineer, auditor, or executive"),
+    include_history: bool = typer.Option(False, "--include-history", help="Embed git hotspots into dossier"),
+    history_since: str = typer.Option("90d", "--history-since", help="Git history window, e.g. 90d or YYYY-MM-DD"),
+    history_top: int = typer.Option(15, "--history-top", help="Number of hotspots to embed"),
+    history_include: Optional[str] = typer.Option(None, "--history-include", help="Comma-separated globs to include"),
+    history_exclude: Optional[str] = typer.Option(None, "--history-exclude", help="Comma-separated globs to exclude"),
 ):
     """
     Analyze a software project and generate a dossier.
@@ -75,7 +80,13 @@ def analyze(
 
     try:
         analyzer = Analyzer(source, output_dir, mode=input_mode, root=root, no_llm=no_llm, render_mode=mode.value)
-        asyncio.run(analyzer.run())
+        asyncio.run(analyzer.run(
+            include_history=include_history,
+            history_since=history_since,
+            history_top=history_top,
+            history_include=history_include,
+            history_exclude=history_exclude,
+        ))
         console.print(f"[bold green]Analysis complete![/bold green] Results in {output_dir}")
     except Exception as e:
         console.print(f"[bold red]Error during analysis:[/bold red] {str(e)}")
