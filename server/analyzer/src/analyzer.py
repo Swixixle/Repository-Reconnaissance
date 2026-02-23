@@ -1,3 +1,103 @@
+import re
+from pathlib import Path
+from typing import Optional, Any
+
+# Helper: Structured snippet evidence from first regex match
+def make_evidence_from_first_match(repo_dir: Path, rel_path: str, pattern: str) -> Optional[dict]:
+    p = repo_dir / rel_path
+    if not p.exists():
+        return None
+    rx = re.compile(pattern)
+    try:
+        lines = p.read_text(encoding="utf-8", errors="replace").splitlines()
+    except Exception:
+        return None
+    for i, line in enumerate(lines, start=1):
+        if rx.search(line):
+            return make_evidence_from_line(rel_path, i, line)
+    return None
+
+# Safe evidence append utility
+def _append_snippet_evidence_if_possible(item: Any, ev: Optional[dict]) -> None:
+    if ev is None:
+        return
+    if not isinstance(item, dict):
+        return
+    for key in ("evidence", "evidence_items", "proof", "sources"):
+        if key in item and isinstance(item[key], list):
+            item[key].append(ev)
+            return
+
+# Recursively apply evidence to section
+def _apply_ev_to_section(section_obj: Any, ev: Optional[dict]) -> None:
+    if ev is None:
+        return
+    if isinstance(section_obj, dict):
+        _append_snippet_evidence_if_possible(section_obj, ev)
+        for nested_key in ("claims", "items", "steps", "entries", "rows"):
+            if nested_key in section_obj:
+                _apply_ev_to_section(section_obj[nested_key], ev)
+    elif isinstance(section_obj, list):
+        for x in section_obj:
+            _apply_ev_to_section(x, ev)
+import json
+import platform
+import traceback
+import subprocess
+from dataclasses import dataclass, asdict
+
+# --- Phase 2 Reliability Hardening Helpers ---
+@dataclass
+class RunContext:
+    repo_root: str
+    output_dir: str
+    mode: str
+    render_mode: str
+    no_llm: bool
+    run_id: str
+    git_sha: str
+    python: str
+    platform: str
+
+def _utc_now_compact() -> str:
+    from datetime import datetime, timezone
+    return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+def _safe_print(s: str) -> None:
+    print(s, flush=True)
+
+def run_stage(name: str, fn, ctx: RunContext):
+    _safe_print(f"STAGE START: {name} | run_id={ctx.run_id} | sha={ctx.git_sha}")
+    try:
+        result = fn()
+        _safe_print(f"STAGE END:   {name} | ok")
+        return result
+    except Exception as e:
+        _safe_print(f"STAGE FAIL:  {name} | {type(e).__name__}: {e}")
+        _safe_print("CONTEXT:")
+        _safe_print(json.dumps(asdict(ctx), indent=2, sort_keys=True))
+        _safe_print("TRACEBACK:")
+        _safe_print(traceback.format_exc())
+        raise
+
+def _get_git_sha(repo_root: str) -> str:
+    try:
+        out = subprocess.check_output([
+            "git", "rev-parse", "HEAD"
+        ], cwd=repo_root, stderr=subprocess.DEVNULL, text=True).strip()
+        return out if out else "unknown"
+    except Exception:
+        return "unknown"
+
+def _validate_llm_or_fallback(self):
+    if self.no_llm:
+        return
+    api_key = os.environ.get("AI_INTEGRATIONS_OPENAI_API_KEY")
+    if not api_key:
+        _safe_print("WARNING: AI_INTEGRATIONS_OPENAI_API_KEY missing; falling back to no_llm=True")
+        self.no_llm = True
+        self.client = None
+        return
 import os
 import json
 import asyncio
@@ -39,10 +139,9 @@ class Analyzer:
         self.no_llm = no_llm
         self.render_mode = render_mode
 
+
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.packs_dir.mkdir(parents=True, exist_ok=True)
-from .history_integration import compute_hotspots_via_node, HistoryOptions
-
 
         self.client = None
         if not no_llm:
@@ -50,6 +149,8 @@ from .history_integration import compute_hotspots_via_node, HistoryOptions
                 api_key=os.environ.get("AI_INTEGRATIONS_OPENAI_API_KEY"),
                 base_url=os.environ.get("AI_INTEGRATIONS_OPENAI_BASE_URL")
             )
+
+from .history_integration import compute_hotspots_via_node, HistoryOptions
 
     @staticmethod
     def get_console():
@@ -67,166 +168,215 @@ from .history_integration import compute_hotspots_via_node, HistoryOptions
         return None
 
     async def run(self, *, include_history=False, history_since="90d", history_top=15, history_include=None, history_exclude=None):
-        self.console.print("[bold]Step 1: Acquiring target...[/bold]")
-        self.acquire_result = acquire_target(
-            target=self.source if self.mode != "replit" else None,
-            replit_mode=(self.mode == "replit"),
-            output_dir=self.output_dir,
-        )
-        self.repo_dir = self.acquire_result.root_path
-        self.mode = self.acquire_result.mode
-        self.console.print(f"  Mode: {self.mode}, Root: {self.repo_dir}, RunID: {self.acquire_result.run_id}")
+        # --- Phase 2: Deterministic run folder, manifest, staged execution, env validation ---
+        repo_root = str(self.root_scope) if getattr(self, "root_scope", None) else None
+        git_sha = _get_git_sha(self.repo_dir)
+        run_id = f"{_utc_now_compact()}-{git_sha[:7] if git_sha != 'unknown' else 'nogit'}"
+        base_output_dir = self.output_dir
+        run_dir = base_output_dir / "runs" / run_id
+        run_dir.mkdir(parents=True, exist_ok=True)
+        self.run_dir = run_dir
 
-        if self.root_scope:
-            scoped = self.repo_dir / self.root_scope
-            if scoped.is_dir():
-                self.repo_dir = scoped
-            else:
-                self.console.print(f"[yellow]Warning:[/yellow] --root {self.root_scope} not found, using full target")
-
-        analyzer_self_root = self._detect_self_skip()
-
-        self.console.print("[bold]Step 2: Indexing files...[/bold]")
-        file_index = self.index_files()
-        self.console.print(f"  Indexed {len(file_index)} files (skipped {self._skipped_count} self-files)")
-
-        self.console.print("[bold]Step 3: Creating evidence packs...[/bold]")
-        packs = self.create_evidence_packs(file_index)
-
-        if self.mode == "replit":
-            self.console.print("[bold]Step 3b: Replit profiling...[/bold]")
-            profiler = ReplitProfiler(self.repo_dir, self_root=analyzer_self_root)
-            self._profiler = profiler
-            self.replit_profile = profiler.detect()
-            self.save_json("replit_profile.json", self.replit_profile)
-            packs["replit"] = json.dumps(self.replit_profile, indent=2, default=str)
-            self.console.print(f"  is_replit={self.replit_profile.get('is_replit')}, "
-                               f"secrets={len(self.replit_profile.get('required_secrets', []))}, "
-                               f"port={self.replit_profile.get('port_binding', {})}")
-
-        if self.no_llm:
-            self.console.print("[bold]Step 4: Building deterministic howto (--no-llm)...[/bold]")
-            howto = self._build_deterministic_howto()
-            howto["completeness"] = self._compute_completeness(howto)
-            dossier = self._build_deterministic_dossier(howto)
-            claims = self._build_deterministic_claims(howto, file_index)
-        else:
-            self.console.print("[bold]Step 4: Extracting how-to...[/bold]")
-            howto = await self.extract_howto(packs)
-            howto = self._normalize_howto_evidence(howto)
-            howto["completeness"] = self._compute_completeness(howto)
-
-            self.console.print("[bold]Step 5: Generating claims & dossier...[/bold]")
-            dossier, claims = await self.generate_dossier(packs, howto)
-            claims = self._verify_claims_evidence(claims)
-
-        # Add metadata to howto for schema compliance
-        howto = self._add_howto_metadata(howto)
-        
-        self.save_json("index.json", file_index)
-        self.save_json_with_validation("target_howto.json", howto, validate_target_howto_json)
-        self.save_json("claims.json", claims)
-        replit_detected = self.replit_profile.get("replit_detected", False) if self.replit_profile else False
-        replit_detection_ev = self.replit_profile.get("replit_detection_evidence", []) if self.replit_profile else []
-        self.save_json("coverage.json", {
-            "mode_requested": self.mode,
-            "mode": self.mode,
-            "run_id": self.acquire_result.run_id,
-            "scanned": len(file_index),
-            "skipped": self._skipped_count,
-            "replit_detected": replit_detected,
-            "replit_detection_evidence": replit_detection_ev,
-            "is_replit": replit_detected,
-            "self_skip": {
-                "enabled": bool(self._self_skip_paths),
-                "excluded_paths": list(self._self_skip_paths),
-                "excluded_file_count": self._skipped_count,
-                "reason": "Analyzer source files excluded to prevent false-positive pattern matches"
-            }
-        })
-
-        with open(self.output_dir / "DOSSIER.md", "w") as f:
-            f.write(dossier)
-
-        self.console.print("[bold]Step 5b: Building operate.json...[/bold]")
-        operate = build_operate(
-            repo_dir=self.repo_dir,
-            file_index=file_index,
+        ctx = RunContext(
+            repo_root=str(self.repo_dir),
+            output_dir=str(run_dir),
             mode=self.mode,
-            replit_profile=self.replit_profile,
+            render_mode=self.render_mode,
+            no_llm=self.no_llm,
+            run_id=run_id,
+            git_sha=git_sha,
+            python=platform.python_version(),
+            platform=f"{platform.system()} {platform.release()} ({platform.machine()})",
         )
-        op_errors = validate_operate(operate)
-        if op_errors:
-            self.console.print(f"  [yellow]operate.json validation warnings: {len(op_errors)}[/yellow]")
-            for e in op_errors[:5]:
-                self.console.print(f"    - {e}")
-        self.save_json_with_validation("operate.json", operate, validate_operate_json)
-        self.console.print(f"  operate.json saved ({len(operate.get('gaps', []))} gaps, "
-                           f"boot={operate.get('readiness', {}).get('boot', {}).get('score', 0)}%)")
+        manifest_path = run_dir / "manifest.json"
+        manifest_path.write_text(json.dumps(asdict(ctx), indent=2, sort_keys=True), encoding="utf-8")
+        _safe_print(f"Manifest written: {manifest_path}")
 
-        self.console.print("[bold]Step 6: Computing Known Unknowns...[/bold]")
-        known_unknowns = compute_known_unknowns(
-            howto=howto,
-            claims=claims,
-            coverage={
-                "mode": self.mode,
-                "scanned": len(file_index),
-            },
-            file_index=file_index,
-        )
-        self.save_json("known_unknowns.json", known_unknowns)
-        verified_count = len([u for u in known_unknowns if u["status"] == "VERIFIED"])
-        unknown_count = len([u for u in known_unknowns if u["status"] == "UNKNOWN"])
-        self.console.print(f"  {verified_count} VERIFIED, {unknown_count} UNKNOWN out of {len(known_unknowns)} categories")
+        self._validate_llm_or_fallback()
+        ctx.no_llm = self.no_llm
+        manifest_path.write_text(json.dumps(asdict(ctx), indent=2, sort_keys=True), encoding="utf-8")
 
-        # --- Change Hotspots Integration ---
-        change_hotspots = None
-        if include_history:
-            repo_path = str(self.repo_dir)
-            try:
-                opts = HistoryOptions(
-                    repo_path=Path(repo_path).resolve(),
-                    since=history_since,
-                    top=max(1, history_top),
-                    include_globs=_parse_globs(history_include),
-                    exclude_globs=_parse_globs(history_exclude),
+        try:
+            def acquire():
+                self.console.print("[bold]Step 1: Acquiring target...[/bold]")
+                self.acquire_result = acquire_target(
+                    target=self.source if self.mode != "replit" else None,
+                    replit_mode=(self.mode == "replit"),
+                    output_dir=run_dir,
                 )
-                report = compute_hotspots_via_node(opts)
-                change_hotspots = {
-                    "window": report["window"],
-                    "totals": report["totals"],
-                    "top": report.get("hotspots", [])[:history_top],
-                }
-            except Exception as e:
-                raise RuntimeError(f"Failed to compute git hotspots: {e}\nMake sure Node.js 22+ is installed and the Node CLI artifact is built.")
+                self.repo_dir = self.acquire_result.root_path
+                self.mode = self.acquire_result.mode
+                self.console.print(f"  Mode: {self.mode}, Root: {self.repo_dir}, RunID: {self.acquire_result.run_id}")
+                if self.root_scope:
+                    scoped = self.repo_dir / self.root_scope
+                    if scoped.is_dir():
+                        self.repo_dir = scoped
+                    else:
+                        self.console.print(f"[yellow]Warning:[/yellow] --root {self.root_scope} not found, using full target")
+                return None
+            run_stage("acquire_target", acquire, ctx)
 
-        self.console.print("[bold]Step 7: Building EvidencePack v1...[/bold]")
-        evidence_pack = build_evidence_pack(
-            howto=howto,
-            claims=claims,
-            coverage={
+            analyzer_self_root = self._detect_self_skip()
+
+            file_index = run_stage("index_files", self.index_files, ctx)
+            self.console.print(f"  Indexed {len(file_index)} files (skipped {self._skipped_count} self-files)")
+
+            def create_packs():
+                return self.create_evidence_packs(file_index)
+            packs = run_stage("create_evidence_packs", create_packs, ctx)
+
+            if self.mode == "replit":
+                def replit_profile_stage():
+                    self.console.print("[bold]Step 3b: Replit profiling...[/bold]")
+                    profiler = ReplitProfiler(self.repo_dir, self_root=analyzer_self_root)
+                    self._profiler = profiler
+                    self.replit_profile = profiler.detect()
+                    self.save_json("replit_profile.json", self.replit_profile)
+                    packs["replit"] = json.dumps(self.replit_profile, indent=2, default=str)
+                    self.console.print(f"  is_replit={self.replit_profile.get('is_replit')}, "
+                                       f"secrets={len(self.replit_profile.get('required_secrets', []))}, "
+                                       f"port={self.replit_profile.get('port_binding', {})}")
+                run_stage("replit_profile", replit_profile_stage, ctx)
+
+            if self.no_llm:
+                def build_deterministic():
+                    self.console.print("[bold]Step 4: Building deterministic howto (--no-llm)...[/bold]")
+                    howto = self._build_deterministic_howto()
+                    howto["completeness"] = self._compute_completeness(howto)
+                    dossier = self._build_deterministic_dossier(howto)
+                    claims = self._build_deterministic_claims(howto, file_index)
+                    return howto, dossier, claims
+                howto, dossier, claims = run_stage("build_deterministic", build_deterministic, ctx)
+            else:
+                async def extract_and_generate():
+                    self.console.print("[bold]Step 4: Extracting how-to...[/bold]")
+                    howto = await self.extract_howto(packs)
+                    howto = self._normalize_howto_evidence(howto)
+                    howto["completeness"] = self._compute_completeness(howto)
+                    self.console.print("[bold]Step 5: Generating claims & dossier...[/bold]")
+                    dossier, claims = await self.generate_dossier(packs, howto)
+                    claims = self._verify_claims_evidence(claims)
+                    return howto, dossier, claims
+                howto, dossier, claims = await run_stage("extract_and_generate", extract_and_generate, ctx)
+
+            howto = self._add_howto_metadata(howto)
+            self.save_json("index.json", file_index)
+            self.save_json_with_validation("target_howto.json", howto, validate_target_howto_json)
+            self.save_json("claims.json", claims)
+            replit_detected = self.replit_profile.get("replit_detected", False) if self.replit_profile else False
+            replit_detection_ev = self.replit_profile.get("replit_detection_evidence", []) if self.replit_profile else []
+            self.save_json("coverage.json", {
+                "mode_requested": self.mode,
                 "mode": self.mode,
+                "run_id": self.acquire_result.run_id,
                 "scanned": len(file_index),
-            },
-            file_index=file_index,
-            known_unknowns=known_unknowns,
-            replit_profile=self.replit_profile,
-            mode=self.mode,
-            run_id=self.acquire_result.run_id if self.acquire_result else None,
-            skipped_files=self._skipped_count,
-        )
-        if change_hotspots:
-            evidence_pack["change_hotspots"] = change_hotspots
-        pack_path = save_evidence_pack(evidence_pack, self.output_dir)
-        assert_pack_written(pack_path)
-        self.console.print(f"  EvidencePack saved to {pack_path}")
+                "skipped": self._skipped_count,
+                "replit_detected": replit_detected,
+                "replit_detection_evidence": replit_detection_ev,
+                "is_replit": replit_detected,
+                "self_skip": {
+                    "enabled": bool(self._self_skip_paths),
+                    "excluded_paths": list(self._self_skip_paths),
+                    "excluded_file_count": self._skipped_count,
+                    "reason": "Analyzer source files excluded to prevent false-positive pattern matches"
+                }
+            })
+            with open(run_dir / "DOSSIER.md", "w") as f:
+                f.write(dossier)
 
-        self.console.print(f"[bold]Step 8: Rendering {self.render_mode} report...[/bold]")
-        report_content = render_report(evidence_pack, mode=self.render_mode)
-        report_path = save_report(report_content, self.output_dir, self.render_mode)
-        self.console.print(f"  Report saved to {report_path}")
+            def build_operate_stage():
+                self.console.print("[bold]Step 5b: Building operate.json...[/bold]")
+                operate = build_operate(
+                    repo_dir=self.repo_dir,
+                    file_index=file_index,
+                    mode=self.mode,
+                    replit_profile=self.replit_profile,
+                )
+                op_errors = validate_operate(operate)
+                if op_errors:
+                    self.console.print(f"  [yellow]operate.json validation warnings: {len(op_errors)}[/yellow]")
+                    for e in op_errors[:5]:
+                        self.console.print(f"    - {e}")
+                self.save_json_with_validation("operate.json", operate, validate_operate_json)
+                self.console.print(f"  operate.json saved ({len(operate.get('gaps', []))} gaps, "
+                                   f"boot={operate.get('readiness', {}).get('boot', {}).get('score', 0)}%)")
+            run_stage("build_operate", build_operate_stage, ctx)
 
-        self.console.print("[bold green]All outputs written.[/bold green]")
+            def compute_unknowns_stage():
+                self.console.print("[bold]Step 6: Computing Known Unknowns...[/bold]")
+                known_unknowns = compute_known_unknowns(
+                    howto=howto,
+                    claims=claims,
+                    coverage={
+                        "mode": self.mode,
+                        "scanned": len(file_index),
+                    },
+                    file_index=file_index,
+                )
+                self.save_json("known_unknowns.json", known_unknowns)
+                verified_count = len([u for u in known_unknowns if u["status"] == "VERIFIED"])
+                unknown_count = len([u for u in known_unknowns if u["status"] == "UNKNOWN"])
+                self.console.print(f"  {verified_count} VERIFIED, {unknown_count} UNKNOWN out of {len(known_unknowns)} categories")
+                return known_unknowns
+            known_unknowns = run_stage("compute_known_unknowns", compute_unknowns_stage, ctx)
+
+            change_hotspots = None
+            if include_history:
+                def compute_hotspots_stage():
+                    repo_path = str(self.repo_dir)
+                    try:
+                        opts = HistoryOptions(
+                            repo_path=Path(repo_path).resolve(),
+                            since=history_since,
+                            top=max(1, history_top),
+                            include_globs=_parse_globs(history_include),
+                            exclude_globs=_parse_globs(history_exclude),
+                        )
+                        report = compute_hotspots_via_node(opts)
+                        return {
+                            "window": report["window"],
+                            "totals": report["totals"],
+                            "top": report.get("hotspots", [])[:history_top],
+                        }
+                    except Exception as e:
+                        raise RuntimeError(f"Failed to compute git hotspots: {e}\nMake sure Node.js 22+ is installed and the Node CLI artifact is built.")
+                change_hotspots = run_stage("compute_hotspots", compute_hotspots_stage, ctx)
+
+            def build_evidence_pack_stage():
+                self.console.print("[bold]Step 7: Building EvidencePack v1...[/bold]")
+                evidence_pack = build_evidence_pack(
+                    howto=howto,
+                    claims=claims,
+                    coverage={
+                        "mode": self.mode,
+                        "scanned": len(file_index),
+                    },
+                    file_index=file_index,
+                    known_unknowns=known_unknowns,
+                    replit_profile=self.replit_profile,
+                    mode=self.mode,
+                    run_id=self.acquire_result.run_id if self.acquire_result else None,
+                    skipped_files=self._skipped_count,
+                )
+                if change_hotspots:
+                    evidence_pack["change_hotspots"] = change_hotspots
+                pack_path = save_evidence_pack(evidence_pack, run_dir)
+                assert_pack_written(pack_path)
+                self.console.print(f"  EvidencePack saved to {pack_path}")
+                return evidence_pack
+            evidence_pack = run_stage("build_evidence_pack", build_evidence_pack_stage, ctx)
+
+            def render_report_stage():
+                self.console.print(f"[bold]Step 8: Rendering {self.render_mode} report...[/bold]")
+                report_content = render_report(evidence_pack, mode=self.render_mode)
+                report_path = save_report(report_content, run_dir, self.render_mode)
+                self.console.print(f"  Report saved to {report_path}")
+            run_stage("render_report", render_report_stage, ctx)
+
+            _safe_print("[bold green]All outputs written.[/bold green]")
+        except Exception:
+            (run_dir / "FAILED").write_text("Analyzer run failed. See logs above.\n", encoding="utf-8")
+            raise
 
     def index_files(self) -> List[str]:
         skip_dirs = {".git", "node_modules", "__pycache__", ".pythonlibs", ".cache",
@@ -591,13 +741,19 @@ from .history_integration import compute_hotspots_via_node, HistoryOptions
         if unknowns:
             notes_parts.append(f"{len(unknowns)} unknown(s) reported")
 
-        return {
+        breakdown = {
             "score": score,
             "max": 100,
             "missing": missing,
             "deductions": deductions,
             "notes": "; ".join(notes_parts) if notes_parts else None
         }
+        # Write completeness_breakdown.json for audit
+        try:
+            self.save_json(f"runs/{getattr(self.acquire_result, 'run_id', 'unknown')}/completeness_breakdown.json", breakdown)
+        except Exception as e:
+            print(f"[WARN] Could not write completeness_breakdown.json: {e}")
+        return breakdown
 
     async def extract_howto(self, packs: Dict[str, str]) -> Dict[str, Any]:
         replit_context = ""
@@ -1003,6 +1159,47 @@ RULES:
         }
 
     def _build_deterministic_howto(self) -> dict:
+                # --- Compute candidate snippet evidence for each section ---
+                ev_install = (
+                    make_evidence_from_first_match(self.repo_dir, ".github/workflows/ci-tests.yml", r"setup-python|python-version")
+                    or make_evidence_from_first_match(self.repo_dir, ".replit", r"python-3\\.(11|12)|^\\s*run\\s*=")
+                    or make_evidence_from_first_match(self.repo_dir, "pyproject.toml", r"^\\[project\\]|\\[tool\\..*\\]|dependencies")
+                )
+                ev_run = (
+                    make_evidence_from_first_match(self.repo_dir, ".replit", r"^\\s*run\\s*=")
+                    or make_evidence_from_first_match(self.repo_dir, "server/analyzer/analyzer_cli.py", r"def\\s+main\\(|__name__\\s*==\\s*['\"]__main__['\"]")
+                )
+                ev_config_key = make_evidence_from_first_match(self.repo_dir, "server/analyzer/src/analyzer.py", r"AI_INTEGRATIONS_OPENAI_API_KEY")
+                ev_config_limits = make_evidence_from_first_match(self.repo_dir, "server/analyzer/src/analyzer.py", r"MAX_REPO_BYTES|MAX_FILE_COUNT|MAX_SINGLE_FILE_BYTES")
+                ev_port = (
+                    make_evidence_from_first_match(self.repo_dir, "Dockerfile", r"EXPOSE\\s+5000")
+                    or make_evidence_from_first_match(self.repo_dir, "Dockerfile", r"HEALTHCHECK.*5000")
+                )
+                ev_verify_ci = make_evidence_from_first_match(self.repo_dir, ".github/workflows/ci-tests.yml", r"preflight\\.sh|pytest")
+                ev_verify_preflight = make_evidence_from_first_match(self.repo_dir, "scripts/preflight.sh", r"compileall|pytest\\s+-q")
+                ev_examples_runs = make_evidence_from_first_match(self.repo_dir, "server/analyzer/src/analyzer.py", r"/runs/|run_id|manifest\\.json")
+                ev_examples_nollm = make_evidence_from_first_match(self.repo_dir, "server/analyzer/src/analyzer.py", r"no_llm|AI_INTEGRATIONS_OPENAI_API_KEY.*missing|falling back")
+
+                # --- Apply snippet evidence to each section robustly ---
+                for key, ev in [
+                    ("install_steps", ev_install),
+                    ("run_dev", ev_run),
+                    ("port", ev_port),
+                ]:
+                    if key in howto:
+                        _apply_ev_to_section(howto[key], ev)
+                # Config: attach both key and limits if present
+                if "config" in howto:
+                    _apply_ev_to_section(howto["config"], ev_config_key)
+                    _apply_ev_to_section(howto["config"], ev_config_limits)
+                # Verification: attach both CI and preflight if present
+                if "verification_steps" in howto:
+                    _apply_ev_to_section(howto["verification_steps"], ev_verify_ci)
+                    _apply_ev_to_section(howto["verification_steps"], ev_verify_preflight)
+                # Usage examples: attach both run_dir and nollm fallback if present
+                if "usage_examples" in howto:
+                    _apply_ev_to_section(howto["usage_examples"], ev_examples_runs)
+                    _apply_ev_to_section(howto["usage_examples"], ev_examples_nollm)
         howto: Dict[str, Any] = {
             "prereqs": [],
             "install_steps": [],
