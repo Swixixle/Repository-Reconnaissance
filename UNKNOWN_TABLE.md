@@ -1,0 +1,7 @@
+| Unknown | Why it matters | Required evidence | Where to look next (files/commands) | Confidence |
+|---------|---------------|-------------------|--------------------------------------|------------|
+| No linter configured (ruff/pyflakes/flake8/mypy) | Linting errors may go undetected, reducing code quality and reliability | Linter config file or invocation in scripts/CI | Search for linter config files (e.g., ruff.toml, .flake8, mypy.ini), check scripts/preflight.sh, search for linter mentions in package.json, pyproject.toml | High |
+| Canonical interpreter is `python3` (CI and Replit) | Preflight and analyzer run reliability | `.github/workflows/ci-tests.yml` (setup-python: 3.11), `.replit` (python-3.11) | See `.github/workflows/ci-tests.yml`, `.replit` | High | VERIFIED |
+| Pytest is a required gate in CI and Replit | Determines operational truth | `scripts/preflight.sh` called in `.github/workflows/ci-tests.yml` and `.replit` | See `.github/workflows/ci-tests.yml`, `.replit`, `scripts/preflight.sh` | High | VERIFIED |
+| Lint/typecheck policy (present or intentionally absent) | Prevents silent regressions like indentation | config files or doc stating policy | `pyproject.toml`, `setup.cfg`, `.pre-commit-config.yaml`, docs | Medium |
+| Python interpreter availability in runtime environment | Preflight and analyzer run reliability | Runner environment, PATH, interpreter install evidence | `which python3`, `which python`, runner logs, `.replit`, CI logs | High |

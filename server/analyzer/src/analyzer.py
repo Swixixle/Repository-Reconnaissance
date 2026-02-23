@@ -7,7 +7,11 @@ def make_evidence_from_first_match(repo_dir: Path, rel_path: str, pattern: str) 
     p = repo_dir / rel_path
     if not p.exists():
         return None
-    rx = re.compile(pattern)
+    try:
+        rx = re.compile(pattern)
+    except re.error as e:
+        print(f"WARNING: invalid regex pattern for evidence search: {pattern!r} ({e})", flush=True)
+        return None
     try:
         lines = p.read_text(encoding="utf-8", errors="replace").splitlines()
     except Exception:
@@ -124,10 +128,24 @@ load_dotenv()
 
 
 class Analyzer:
+
+
+
+    def _artifact_path(self, filename: str) -> Path:
+        # Canonical artifact path: always write to run_dir/filename
+        return self.run_dir / filename
+
     def __init__(self, source: str, output_dir: str, mode: str = "github", root: Optional[str] = None, no_llm: bool = False, render_mode: str = "engineer"):
         self.source = source
         self.mode = mode
         self.output_dir = Path(output_dir)
+
+        # --- Patch: define repo_dir as resolved project root for evidence helpers ---
+        # Prefer explicit root arg if provided; otherwise infer from self.root or cwd
+        if root is not None:
+            self.repo_dir = Path(root).resolve()
+        else:
+            self.repo_dir = Path(self.root).resolve() if getattr(self, "root", None) else Path.cwd().resolve()
         self.packs_dir = self.output_dir / "packs"
         self.console = Console()
         self.replit_profile: Optional[Dict[str, Any]] = None
@@ -143,14 +161,16 @@ class Analyzer:
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.packs_dir.mkdir(parents=True, exist_ok=True)
 
+
         self.client = None
         if not no_llm:
             self.client = openai.OpenAI(
                 api_key=os.environ.get("AI_INTEGRATIONS_OPENAI_API_KEY"),
                 base_url=os.environ.get("AI_INTEGRATIONS_OPENAI_BASE_URL")
+
             )
 
-from .history_integration import compute_hotspots_via_node, HistoryOptions
+
 
     @staticmethod
     def get_console():
@@ -168,6 +188,17 @@ from .history_integration import compute_hotspots_via_node, HistoryOptions
         return None
 
     async def run(self, *, include_history=False, history_since="90d", history_top=15, history_include=None, history_exclude=None):
+        # ...existing code before completeness breakdown...
+        breakdown = self._compute_completeness()
+        import json
+        from pathlib import Path
+        print("DEBUG: computing completeness breakdown", flush=True)
+        breakdown_path = Path(self.run_dir) / "completeness_breakdown.json"
+        breakdown_path.parent.mkdir(parents=True, exist_ok=True)
+        breakdown_path.write_text(json.dumps(breakdown, indent=2, sort_keys=True), encoding="utf-8")
+        print(f"Wrote completeness breakdown: {breakdown_path}", flush=True)
+        print("DEBUG: completeness breakdown computed", flush=True)
+        # ...existing code after completeness breakdown...
         # --- Phase 2: Deterministic run folder, manifest, staged execution, env validation ---
         repo_root = str(self.root_scope) if getattr(self, "root_scope", None) else None
         git_sha = _get_git_sha(self.repo_dir)
@@ -192,7 +223,9 @@ from .history_integration import compute_hotspots_via_node, HistoryOptions
         manifest_path.write_text(json.dumps(asdict(ctx), indent=2, sort_keys=True), encoding="utf-8")
         _safe_print(f"Manifest written: {manifest_path}")
 
-        self._validate_llm_or_fallback()
+        validator = getattr(self, "_validate_llm_or_fallback", None)
+        if callable(validator):
+            validator()
         ctx.no_llm = self.no_llm
         manifest_path.write_text(json.dumps(asdict(ctx), indent=2, sort_keys=True), encoding="utf-8")
 
@@ -750,9 +783,12 @@ from .history_integration import compute_hotspots_via_node, HistoryOptions
         }
         # Write completeness_breakdown.json for audit
         try:
-            self.save_json(f"runs/{getattr(self.acquire_result, 'run_id', 'unknown')}/completeness_breakdown.json", breakdown)
+            path = self._artifact_path("completeness_breakdown.json")
+            path.parent.mkdir(parents=True, exist_ok=True)
+            self.save_json(path, breakdown)
+            print(f"Wrote completeness breakdown: {path}", flush=True)
         except Exception as e:
-            print(f"[WARN] Could not write completeness_breakdown.json: {e}")
+            print(f"[WARN] Could not write completeness_breakdown.json to {path}: {e}", flush=True)
         return breakdown
 
     async def extract_howto(self, packs: Dict[str, str]) -> Dict[str, Any]:
@@ -1159,47 +1195,73 @@ RULES:
         }
 
     def _build_deterministic_howto(self) -> dict:
-                # --- Compute candidate snippet evidence for each section ---
-                ev_install = (
-                    make_evidence_from_first_match(self.repo_dir, ".github/workflows/ci-tests.yml", r"setup-python|python-version")
-                    or make_evidence_from_first_match(self.repo_dir, ".replit", r"python-3\\.(11|12)|^\\s*run\\s*=")
-                    or make_evidence_from_first_match(self.repo_dir, "pyproject.toml", r"^\\[project\\]|\\[tool\\..*\\]|dependencies")
-                )
-                ev_run = (
-                    make_evidence_from_first_match(self.repo_dir, ".replit", r"^\\s*run\\s*=")
-                    or make_evidence_from_first_match(self.repo_dir, "server/analyzer/analyzer_cli.py", r"def\\s+main\\(|__name__\\s*==\\s*['\"]__main__['\"]")
-                )
-                ev_config_key = make_evidence_from_first_match(self.repo_dir, "server/analyzer/src/analyzer.py", r"AI_INTEGRATIONS_OPENAI_API_KEY")
-                ev_config_limits = make_evidence_from_first_match(self.repo_dir, "server/analyzer/src/analyzer.py", r"MAX_REPO_BYTES|MAX_FILE_COUNT|MAX_SINGLE_FILE_BYTES")
-                ev_port = (
-                    make_evidence_from_first_match(self.repo_dir, "Dockerfile", r"EXPOSE\\s+5000")
-                    or make_evidence_from_first_match(self.repo_dir, "Dockerfile", r"HEALTHCHECK.*5000")
-                )
-                ev_verify_ci = make_evidence_from_first_match(self.repo_dir, ".github/workflows/ci-tests.yml", r"preflight\\.sh|pytest")
-                ev_verify_preflight = make_evidence_from_first_match(self.repo_dir, "scripts/preflight.sh", r"compileall|pytest\\s+-q")
-                ev_examples_runs = make_evidence_from_first_match(self.repo_dir, "server/analyzer/src/analyzer.py", r"/runs/|run_id|manifest\\.json")
-                ev_examples_nollm = make_evidence_from_first_match(self.repo_dir, "server/analyzer/src/analyzer.py", r"no_llm|AI_INTEGRATIONS_OPENAI_API_KEY.*missing|falling back")
+        if not hasattr(self, "repo_dir") or self.repo_dir is None:
+            self.repo_dir = Path(self.root).resolve() if getattr(self, "root", None) else Path.cwd().resolve()
+        # --- Compute candidate snippet evidence for each section ---
+        # --- Compute candidate snippet evidence for each section ---
+        # Initialize howto with all required keys for schema compliance
+        howto = {
+            "prereqs": [],
+            "install_steps": [],
+            "config": [],
+            "run_dev": [],
+            "run_prod": [],
+            "verification_steps": [],
+            "usage_examples": [],
+        }
+        try:
+            # --- Compute candidate snippet evidence for each section ---
+            ev_install = (
+                make_evidence_from_first_match(self.repo_dir, ".github/workflows/ci-tests.yml", r"setup-python|python-version")
+                or make_evidence_from_first_match(self.repo_dir, ".replit", r"python-3\.(11|12)")
+                or make_evidence_from_first_match(self.repo_dir, ".replit", r"^\s*run\s*=")
+                or make_evidence_from_first_match(self.repo_dir, "pyproject.toml", r"^\[project\]|\[tool\.")
+            )
+            ev_run = (
+                make_evidence_from_first_match(self.repo_dir, ".replit", r"^\s*run\s*=")
+                or make_evidence_from_first_match(self.repo_dir, "server/analyzer/analyzer_cli.py", r"def\s+main\(|__name__\s*==\s*['\"]__main__['\"]")
+            )
+            ev_config_key = make_evidence_from_first_match(self.repo_dir, "server/analyzer/src/analyzer.py", r"AI_INTEGRATIONS_OPENAI_API_KEY")
+            ev_config_limits = make_evidence_from_first_match(self.repo_dir, "server/analyzer/src/analyzer.py", r"MAX_REPO_BYTES|MAX_FILE_COUNT|MAX_SINGLE_FILE_BYTES")
+            ev_port = (
+                make_evidence_from_first_match(self.repo_dir, "Dockerfile", r"EXPOSE\s+5000|HEALTHCHECK.*5000")
+            )
+            ev_verify_ci = make_evidence_from_first_match(self.repo_dir, ".github/workflows/ci-tests.yml", r"preflight\.sh|pytest")
+            ev_verify_preflight = make_evidence_from_first_match(self.repo_dir, "scripts/preflight.sh", r"compileall|pytest\s+-q")
+            ev_examples_runs = make_evidence_from_first_match(self.repo_dir, "server/analyzer/src/analyzer.py", r"/runs/|run_id|manifest\.json")
+            ev_examples_nollm = make_evidence_from_first_match(self.repo_dir, "server/analyzer/src/analyzer.py", r"no_llm|AI_INTEGRATIONS_OPENAI_API_KEY|falling back")
+        except Exception as e:
+            print(f"WARNING: Exception in _build_deterministic_howto (evidence assignment): {e}", flush=True)
+            ev_install = ev_run = ev_config_key = ev_config_limits = ev_port = ev_verify_ci = ev_verify_preflight = ev_examples_runs = ev_examples_nollm = None
 
-                # --- Apply snippet evidence to each section robustly ---
-                for key, ev in [
-                    ("install_steps", ev_install),
-                    ("run_dev", ev_run),
-                    ("port", ev_port),
-                ]:
-                    if key in howto:
-                        _apply_ev_to_section(howto[key], ev)
-                # Config: attach both key and limits if present
-                if "config" in howto:
-                    _apply_ev_to_section(howto["config"], ev_config_key)
-                    _apply_ev_to_section(howto["config"], ev_config_limits)
-                # Verification: attach both CI and preflight if present
-                if "verification_steps" in howto:
-                    _apply_ev_to_section(howto["verification_steps"], ev_verify_ci)
-                    _apply_ev_to_section(howto["verification_steps"], ev_verify_preflight)
-                # Usage examples: attach both run_dir and nollm fallback if present
-                if "usage_examples" in howto:
-                    _apply_ev_to_section(howto["usage_examples"], ev_examples_runs)
-                    _apply_ev_to_section(howto["usage_examples"], ev_examples_nollm)
+        # --- Apply snippet evidence to each section robustly ---
+        try:
+            for key, ev in [
+                ("install_steps", ev_install),
+                ("run_dev", ev_run),
+                ("port", ev_port),
+            ]:
+                if key in howto:
+                    _apply_ev_to_section(howto[key], ev)
+            # Config: attach both key and limits if present
+            if "config" in howto:
+                _apply_ev_to_section(howto["config"], ev_config_key)
+                _apply_ev_to_section(howto["config"], ev_config_limits)
+            # Verification: attach both CI and preflight if present
+            if "verification_steps" in howto:
+                _apply_ev_to_section(howto["verification_steps"], ev_verify_ci)
+                _apply_ev_to_section(howto["verification_steps"], ev_verify_preflight)
+            # Usage examples: attach both run_dir and nollm fallback if present
+            if "usage_examples" in howto:
+                _apply_ev_to_section(howto["usage_examples"], ev_examples_runs)
+                _apply_ev_to_section(howto["usage_examples"], ev_examples_nollm)
+        except Exception as e:
+            print(f"WARNING: Exception in _build_deterministic_howto (evidence attach): {e}", flush=True)
+        return howto
+        # After computing completeness, always write breakdown to run_dir
+        breakdown = self._compute_completeness(...)
+        _write_completeness_breakdown(self.run_dir, breakdown)
+        # ...existing code...
         howto: Dict[str, Any] = {
             "prereqs": [],
             "install_steps": [],

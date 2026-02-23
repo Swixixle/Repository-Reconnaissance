@@ -1,3 +1,55 @@
+# Production Readiness
+
+## CI Gates
+| Check | Blocks CI? | Where configured | Notes |
+|---|---:|---|---|
+| pytest | yes | .github/workflows/ci-tests.yml:49-60 | Unit tests must pass |
+| lint | no | scripts/preflight.sh | No linter configured |
+| typecheck | no | N/A | Not enforced; known tech debt |
+
+**Evidence:**
+- .github/workflows/ci-tests.yml
+- scripts/preflight.sh
+
+## Runtime Requirements
+- Python: 3.11+
+- Required env vars: see QUICKSTART.md
+- Resource limits: MAX_REPO_BYTES, MAX_FILE_COUNT, MAX_SINGLE_FILE_BYTES
+
+**Evidence:**
+- server/analyzer/src/analyzer.py (env validation)
+- pyproject.toml
+
+## Observability
+- Logging: console output (rich)
+- Error reporting: stage wrapper prints context + traceback
+
+**Evidence:**
+- server/analyzer/src/analyzer.py (run_stage)
+
+## Security Posture
+- Secrets: env vars (never committed)
+- Input boundaries: repo ingestion, file scanning
+- Risky sinks: subprocess, file writes
+
+**Evidence:**
+- server/analyzer/src/analyzer.py
+- server/analyzer/src/core/operate.py
+
+## Deployment Model
+- Replit: autoscale (see .replit)
+- Docker: supported (see Dockerfile)
+
+**Evidence:**
+- .replit
+- Dockerfile
+
+## Known Gaps / Not Yet Implemented
+- Linter policy absent; see UNKNOWN_TABLE.md
+- Typecheck policy non-blocking; see UNKNOWN_TABLE.md
+
+**Evidence:**
+- UNKNOWN_TABLE.md
 # Production Readiness Implementation Summary
 
 This document summarizes the production readiness improvements made to Asset-Analyzer based on the technical review.

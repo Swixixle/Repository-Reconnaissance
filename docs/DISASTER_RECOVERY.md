@@ -1,3 +1,43 @@
+# Disaster Recovery
+
+## What state exists?
+- Output artifacts: output/runs/<run_id>/ (manifest, dossier, evidence)
+- No persistent DB; state is file-based
+
+**Evidence:**
+- server/analyzer/src/analyzer.py (run_dir logic)
+
+## Backup Strategy
+### Current state
+- Not implemented; outputs are file-based
+- To implement: add backup job for output/runs/ folder
+
+**Evidence:**
+- output/runs/ folder
+
+## Restore Procedure
+1. Restore output/runs/ from backup
+2. Re-run analyzer if needed
+
+**Evidence:**
+- scripts/smoke_test.sh (validation)
+
+## Secrets Rotation
+- AI_INTEGRATIONS_OPENAI_API_KEY (env var)
+- Rotation: update env var, restart analyzer
+
+**Evidence:**
+- server/analyzer/src/analyzer.py (env usage)
+
+## Failure Scenarios
+### Replit outage / migration
+- Clone repo to new host, set up Python, re-run analyzer
+
+### Corrupted output_dir
+- Delete affected run folder; re-run analysis
+
+**Evidence:**
+- output/runs/ structure
 # Disaster Recovery Guide
 
 This document covers backup, restore, and validation procedures for Asset-Analyzer.

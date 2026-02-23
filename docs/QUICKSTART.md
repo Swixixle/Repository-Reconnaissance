@@ -1,3 +1,93 @@
+# Quickstart
+
+## Scope
+This document is the minimum viable “someone else can run it” guide.
+
+## Requirements
+- Python: 3.11+
+- Package/deps: pip (pyproject.toml)
+
+**Evidence:**
+- .replit (python version, run command)
+- pyproject.toml (dependencies)
+- .github/workflows/ci-tests.yml (python setup)
+
+## Install
+### Option A: Replit (recommended)
+1. Open in Replit
+2. Click Run
+
+### Option B: Local
+1. python3 -m pip install -U pip
+2. pip install -e .
+
+**Evidence:**
+- pyproject.toml
+- .replit
+
+## Configure
+Set required environment variables:
+
+| Variable | Required | Purpose | Default |
+|---|---:|---|---|
+| AI_INTEGRATIONS_OPENAI_API_KEY | yes | OpenAI API key for LLM enrichment | none |
+| AI_INTEGRATIONS_OPENAI_BASE_URL | no | Custom OpenAI endpoint | none |
+| MAX_REPO_BYTES | no | Max repo size for analysis | 100MB |
+| MAX_FILE_COUNT | no | Max file count for analysis | 10000 |
+| MAX_SINGLE_FILE_BYTES | no | Max single file size | 10MB |
+
+**Evidence:**
+- server/analyzer/src/analyzer.py (env validation)
+- pyproject.toml
+
+## Run
+### Local
+- python -m server.analyzer.analyzer_cli analyze <repo>
+
+### Replit
+- Click Run (see .replit)
+
+**Evidence:**
+- .replit (run command)
+- server/analyzer/analyzer_cli.py (entrypoint)
+
+## Port / Network
+- Default port: 5000
+- Configured in .replit and server code
+
+**Evidence:**
+- .replit
+- server/analyzer/src/core/operate.py
+
+## Verify
+- Unit tests: pytest -q
+- Smoke check: scripts/smoke_test.sh
+
+**Evidence:**
+- .github/workflows/ci-tests.yml (test step)
+- scripts/preflight.sh
+
+## Examples
+### Example 1: Run analyzer
+- python -m server.analyzer.analyzer_cli analyze <repo>
+- Output: output/runs/<run_id>/DOSSIER.md
+
+### Example 2: no_llm mode
+- python -m server.analyzer.analyzer_cli analyze <repo> --no-llm
+- Output: dossier with LLM enrichment skipped
+
+**Evidence:**
+- server/analyzer/src/analyzer.py (no_llm fallback)
+
+## Troubleshooting
+### python3 not found
+- Install Python 3.11+ or use Replit.
+
+### Missing OpenAI key
+- Set AI_INTEGRATIONS_OPENAI_API_KEY or use --no-llm.
+
+**Evidence:**
+- server/analyzer/src/analyzer.py (env validation)
 # Quick Start Guide
 
 Get Asset-Analyzer (PTA) running in 5 minutes.

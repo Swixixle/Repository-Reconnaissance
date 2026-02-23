@@ -58,6 +58,12 @@ jobs:
           cache: 'npm'
 
       - name: Install Python dependencies
+        run: |
+          python -m pip install -U pip
+          pip install -r requirements.txt || true  # adjust if using poetry/uv
+
+      - name: Preflight (compile + tests)
+        run: bash scripts/preflight.sh
         run: pip install -e .
 
       - name: Install Node.js dependencies
