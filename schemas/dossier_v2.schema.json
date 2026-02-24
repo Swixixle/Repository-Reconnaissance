@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Repo Recon Dossier v2",
+  "type": "object",
+  "required": ["schema_version", "generator", "target", "canonicalization_version", "hash_algorithm", "hash_encoding", "created_at", "claims", "scores", "questions_for_maintainer", "security_warnings", "dossier_hash", "audit_trail"],
+  "properties": {
+    "schema_version": { "type": "string", "const": "dossier_v2" },
+    "generator": {
+      "type": "object",
+      "required": ["name", "version", "git_sha", "build_time"],
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" },
+        "git_sha": { "type": "string" },
+        "build_time": { "type": "string", "format": "date-time" }
+      }
+    },
+    "target": {
+      "type": "object",
+      "required": ["repo_url", "commit_sha"],
+      "properties": {
+        "repo_url": { "type": "string" },
+        "commit_sha": { "type": "string" },
+        "default_branch": { "type": "string" }
+      }
+    },
+    "canonicalization_version": { "type": "string" },
+    "hash_algorithm": { "type": "string", "const": "sha256" },
+    "hash_encoding": { "type": "string", "const": "hex" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["claim_id", "fingerprint", "epistemic_status", "claim_type", "subject", "summary", "evidence"],
+        "properties": {
+          "claim_id": { "type": "string" },
+          "fingerprint": { "type": "string" },
+          "epistemic_status": { "type": "string", "enum": ["VERIFIED", "INFERRED", "UNKNOWN", "DRIFTED", "INVALIDATED"] },
+          "claim_type": { "type": "string", "enum": ["MODULE_EXISTENCE", "FUNCTION_SIGNATURE", "CONFIGURATION", "DEPENDENCY", "SECURITY_POLICY", "DOCUMENTATION", "CONTROL_FLOW", "DATA_RETENTION", "AUTHENTICATION", "AUTHORIZATION", "SECRET_SCAN", "OTHER"] },
+          "subject": { "type": "string" },
+          "summary": { "type": "string" },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["repo_commit", "file", "line_start", "line_end", "excerpt_hash"],
+              "properties": {
+                "repo_commit": { "type": "string" },
+                "file": { "type": "string" },
+                "line_start": { "type": "integer" },
+                "line_end": { "type": "integer" },
+                "excerpt_hash": { "type": "string" },
+                "excerpt_preview": { "type": "string", "maxLength": 500 },
+                "redactions": { "type": "array", "items": { "type": "string" } }
+              }
+            }
+          },
+          "unknown_reason": { "type": "string" },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+        }
+      }
+    },
+    "scores": {
+      "type": "object",
+      "required": ["confidence_overall", "confidence_weighted", "critical_unknowns", "core_module_coverage"],
+      "properties": {
+        "confidence_overall": { "type": "number", "minimum": 0, "maximum": 1 },
+        "confidence_weighted": { "type": "number", "minimum": 0, "maximum": 1 },
+        "critical_unknowns": { "type": "integer" },
+        "core_module_coverage": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "questions_for_maintainer": {
+      "type": "array", "items": { "type": "string" }
+    },
+    "security_warnings": {
+      "type": "array", "items": { "type": "string" }
+    },
+    "dependency_graph_ref": { "type": "string" },
+    "dossier_hash": { "type": "string" },
+    "dossier_signature": { "type": "string" },
+    "audit_trail": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["timestamp", "outcome"],
+        "properties": {
+          "timestamp": { "type": "string", "format": "date-time" },
+          "outcome": { "type": "string" }
+        }
+      }
+    }
+  }
+}

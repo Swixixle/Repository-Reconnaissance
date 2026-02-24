@@ -20,6 +20,7 @@ class RenderMode(str, Enum):
     engineer = "engineer"
     auditor = "auditor"
     executive = "executive"
+    plain = "plain"
 
 
 @app.callback(invoke_without_command=True)
@@ -37,12 +38,13 @@ def analyze(
     replit: bool = typer.Option(False, "--replit", help="Analyze current Replit workspace"),
     root: Optional[str] = typer.Option(None, "--root", help="Subdirectory within target to scope analysis"),
     no_llm: bool = typer.Option(False, "--no-llm", help="Deterministic mode: skip LLM calls, produce only profiler/indexer outputs"),
-    mode: RenderMode = typer.Option(RenderMode.engineer, "--mode", help="Report rendering mode: engineer, auditor, or executive"),
+    mode: RenderMode = typer.Option(RenderMode.engineer, "--render-mode", help="Report rendering mode: engineer, auditor, executive, or plain (one-pager audience mode)"),
     include_history: bool = typer.Option(False, "--include-history", help="Embed git hotspots into dossier"),
     history_since: str = typer.Option("90d", "--history-since", help="Git history window, e.g. 90d or YYYY-MM-DD"),
     history_top: int = typer.Option(15, "--history-top", help="Number of hotspots to embed"),
     history_include: Optional[str] = typer.Option(None, "--history-include", help="Comma-separated globs to include"),
     history_exclude: Optional[str] = typer.Option(None, "--history-exclude", help="Comma-separated globs to exclude"),
+    demo: bool = typer.Option(False, "--demo", help="Generate demo mode outputs (DEMO_DOSSIER.md, DEMO_SUMMARY.json)"),
 ):
     """
     Analyze a software project and generate a dossier.
@@ -53,7 +55,7 @@ def analyze(
     - Replit workspace: analyze --replit -o ./out
 
     Use --no-llm for deterministic extraction without LLM dependency.
-    Use --mode to select report rendering: engineer (default), auditor, or executive.
+    Use --render-mode to select report rendering: engineer (default), auditor, executive, or plain (one-pager).
     """
     console = Analyzer.get_console()
 
@@ -86,6 +88,7 @@ def analyze(
             history_top=history_top,
             history_include=history_include,
             history_exclude=history_exclude,
+            demo=demo,
         ))
         console.print(f"[bold green]Analysis complete![/bold green] Results in {output_dir}")
     except Exception as e:

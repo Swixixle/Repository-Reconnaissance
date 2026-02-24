@@ -1,0 +1,16 @@
+{
+  "repo_name": "",
+  "analysis_date": "",
+  "runtime_seconds": 0,
+  "operational_readiness_score": 0,
+  "evidence_coverage_percent": 0,
+  "critical_unknown_count": 0,
+  "sections": {
+    "executive_summary": [],
+    "system_boundary": {},
+    "top_risks": [],
+    "security_posture": [],
+    "unknowns": [],
+    "evidence_snapshot": []
+  }
+}

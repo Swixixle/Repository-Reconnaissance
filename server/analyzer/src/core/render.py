@@ -1,3 +1,327 @@
+from __future__ import annotations
+
+from typing import Any, Dict
+import json
+
+def render_onboarding_guide(pack: Dict[str, Any]) -> str:
+    """
+    Render a professional onboarding guide for engineers, operators, and stakeholders.
+    Strictly follows the required headings and structure.
+    """
+    lines = []
+    lines.append("# System Onboarding Guide\n")
+    # Purpose and Context
+    lines.append("## Purpose and Context\n")
+    lines.append("This system provides evidence-backed analysis of software repositories, surfacing operational risks and unknowns. Evidence-backed analysis ensures that claims about the system are verifiable and not based on undocumented assumptions. By explicitly surfacing unknowns, the system reduces the risk of hidden gaps and enables safer onboarding, operation, and evaluation.\n")
+    # How to Approach This System
+    lines.append("## How to Approach This System\n")
+    lines.append("- **If you are evaluating this tool:** Start with the 'Repository Analysis Summary' (ONEPAGER.md) for a high-level overview, then review the 'Immediate Risk Briefing' below.\n- **If you are deploying or operating it:** See 'First 24 Hours' and 'First Week' for operational steps and evidence model guidance.\n- **If you inherited this codebase:** Begin with 'System Architecture Overview' and 'Immediate Risk Briefing' to understand structure and risks.\n- **If something is currently broken:** Consult 'Common Failure Scenarios' and 'Escalation and Ownership' for troubleshooting and routing.\n")
+    # Immediate Risk Briefing (Known Unknowns)
+    lines.append("## Immediate Risk Briefing (Known Unknowns)\n")
+    unknowns = pack.get("unknowns", [])
+    # Select top 5 unknowns
+    priority_unknowns = [
+        "deployment/docs",
+        "ops/runbook",
+        "dr/disaster_recovery",
+        "api/map",
+        "frontend/prod_build",
+    ]
+    selected_unknowns = []
+    for cat in priority_unknowns:
+        for u in unknowns:
+            if u.get("category") == cat and u.get("status") == "UNKNOWN":
+                selected_unknowns.append(u)
+                break
+        if len(selected_unknowns) >= 5:
+            break
+    if len(selected_unknowns) < 5:
+        for u in unknowns:
+            if u.get("status") == "UNKNOWN" and u not in selected_unknowns:
+                selected_unknowns.append(u)
+            if len(selected_unknowns) >= 5:
+                break
+    lines.append("| Gap | Why It Matters | Evidence Required to Close It |")
+    lines.append("|-----|---------------|------------------------------|")
+    if not selected_unknowns:
+        lines.append("| None | No major unknowns detected | N/A |\n")
+    else:
+        for u in selected_unknowns:
+            gap = u.get("category", "?")
+            why = u.get("description", "No description.")
+            evidence = u.get("evidence_needed") or u.get("closure_hint") or "Evidence required to close this unknown."
+            lines.append(f"| {gap} | {why} | {evidence} |")
+    lines.append("")
+    # First 24 Hours
+    lines.append("## First 24 Hours\n")
+    lines.append("- Run the analyzer using the documented CLI command.\n- Locate outputs in the latest run directory under `output/runs/`.\n- Open `ONEPAGER.md` for an executive summary.\n- Open `ONBOARDING_GUIDE.md` for onboarding steps.\n- Review `DOSSIER.md` for full technical details.\n")
+    # First Week
+    lines.append("## First Week\n")
+    lines.append("- Study the evidence model: VERIFIED (evidence-backed), INFERRED (not fully evidenced), UNKNOWN (no evidence).\n- Run analysis on a real external repository.\n- Interpret outputs using the onboarding guide and summary.\n- Review CI and configuration gates only if they are evidence-backed in the claims.\n")
+    # First Month
+    lines.append("## First Month\n")
+    lines.append("- Practice operating under failure scenarios.\n- Review security posture and secrets handling if evidenced.\n- Identify known risk areas and production-readiness gaps.\n- Check for observability/logging if present.\n- If any area is not evidenced, treat as Unknown.\n")
+    # System Architecture Overview
+    lines.append("## System Architecture Overview\n")
+    lines.append("```mermaid\ngraph TD\n    A[Target Repository] --> B[Analyzer Engine]\n    B --> C[Evidence Pack + Reports]\n    C --> D[Human Review / Deployment Decisions]\n```\n")
+    # Example Output Walkthrough
+    lines.append("## Example Output Walkthrough\n")
+    # manifest.json excerpt
+    manifest = pack.get("manifest_excerpt")
+    if manifest:
+        lines.append("> manifest.json excerpt:\n")
+        lines.append("```")
+        lines.extend(manifest.splitlines()[:10])
+        lines.append("```")
+        lines.append("> This section shows the run context and configuration.\n")
+    # evidence_pack.v1.json excerpt
+    evidence_pack = pack.get("evidence_pack_excerpt")
+    if evidence_pack:
+        lines.append("> evidence_pack.v1.json excerpt:\n")
+        lines.append("```")
+        lines.extend(evidence_pack.splitlines()[:10])
+        lines.append("```")
+        lines.append("> This indicates the structure of the evidence pack.\n")
+    # DOSSIER.md excerpt
+    dossier = pack.get("dossier_excerpt")
+    if dossier:
+        lines.append("> DOSSIER.md excerpt:\n")
+        lines.append("```")
+        lines.extend(dossier.splitlines()[:10])
+        lines.append("```")
+        lines.append("> This confirms the technical findings and evidence.\n")
+    lines.append("")
+    # Escalation and Ownership
+    lines.append("## Escalation and Ownership\n")
+    if not selected_unknowns:
+        lines.append("No major unknowns requiring escalation.\n")
+    else:
+        for u in selected_unknowns:
+            gap = u.get("category", "?")
+            route = u.get("escalation") or "Likely requires original author or DevOps; see codebase or client for input."
+            lines.append(f"- {gap}: {route}")
+    lines.append("")
+    # Common Failure Scenarios
+    lines.append("## Common Failure Scenarios\n")
+    scenarios = pack.get("failure_scenarios", [])
+    if not scenarios:
+        lines.append("No common failure scenarios evidenced.\n")
+    else:
+        for s in scenarios[:5]:
+            lines.append(f"**Scenario:** {s.get('scenario','?')}\n**Symptoms:** {s.get('symptoms','?')}\n**Likely Cause:** {s.get('cause','?')}\n**Where to Check:** {s.get('where','?')}\n**Resolution Path:** {s.get('resolution','?')}\n")
+    return "\n".join(lines)
+
+def render_onepager(pack: Dict[str, Any]) -> str:
+    """
+    Render a professional executive summary for meetings.
+    Strictly follows the required headings and structure.
+    """
+    lines = []
+    lines.append("# Repository Analysis Summary\n")
+    lines.append("## What This Tool Does\n")
+    lines.append("This tool analyzes a software repository and produces a deterministic, evidence-backed summary of its structure, deployment, security posture, and operational risks. It is designed for decision-makers and stakeholders who need a concise, trustworthy briefing.\n")
+    lines.append("## What It Found in This Repository\n")
+    # Top 5 verified claims
+    verified_sections = _get_verified_sections(pack)
+    verified_claims = []
+    for section in [
+        "runtime/entrypoint",
+        "ci/gating",
+        "deployment/model",
+        "security/posture",
+        "output/artifacts",
+    ]:
+        claims = verified_sections.get(section, [])
+        for claim in claims:
+            if claim.get("evidence"):
+                verified_claims.append((section, claim))
+            if len(verified_claims) >= 5:
+                break
+        if len(verified_claims) >= 5:
+            break
+    if len(verified_claims) < 5:
+        for section, claims in verified_sections.items():
+            for claim in claims:
+                if claim.get("evidence") and (section, claim) not in verified_claims:
+                    verified_claims.append((section, claim))
+                if len(verified_claims) >= 5:
+                    break
+            if len(verified_claims) >= 5:
+                break
+    if not verified_claims:
+        lines.append("- No verified claims with deterministic evidence were found.\n")
+    else:
+        for section, claim in verified_claims[:5]:
+            stmt = claim.get("statement") or claim.get("summary") or section
+            lines.append(f"- {stmt}")
+    lines.append("")
+    lines.append("## Gaps and Risks\n")
+    unknowns = pack.get("unknowns", [])
+    priority_unknowns = [
+        "deployment/docs",
+        "ops/runbook",
+        "dr/disaster_recovery",
+        "api/map",
+        "frontend/prod_build",
+    ]
+    selected_unknowns = []
+    for cat in priority_unknowns:
+        for u in unknowns:
+            if u.get("category") == cat and u.get("status") == "UNKNOWN":
+                selected_unknowns.append(u)
+                break
+        if len(selected_unknowns) >= 5:
+            break
+    if len(selected_unknowns) < 5:
+        for u in unknowns:
+            if u.get("status") == "UNKNOWN" and u not in selected_unknowns:
+                selected_unknowns.append(u)
+            if len(selected_unknowns) >= 5:
+                break
+    if not selected_unknowns:
+        lines.append("- No major gaps or risks detected.\n")
+    else:
+        for u in selected_unknowns:
+            cat = u.get("category", "?")
+            desc = u.get("description", "No description.")
+            evidence_needed = u.get("evidence_needed") or u.get("closure_hint") or "Evidence required to close this gap."
+            lines.append(f"- {cat}: {desc} (To close: {evidence_needed})")
+    lines.append("")
+    lines.append("## Why the Findings Are Trustworthy\n")
+    lines.append("- All findings are backed by deterministic evidence (file hashes, code snippets, or file existence).\n- No claims are promoted to verified without evidence.\n- Unknowns are explicitly listed with what evidence would close them.\n- The tool never infers or guesses claim status.\n")
+    completeness = pack.get("metrics", {}).get("completeness_score")
+    if completeness is not None:
+        lines.append(f"Completeness score: {completeness}/100 (computed from verified claims, unknowns, and how-to coverage).\n")
+    lines.append("## How to Run It\n")
+    lines.append("1. Install Python 3.10+ and create a virtual environment.\n2. Install dependencies: `pip install -r requirements.txt`\n3. Run the analyzer:\n\n   ../../.venv/bin/python -m analyzer_cli analyze ../.. --output-dir ../../output --no-llm\n\n4. Find the outputs in the latest run directory under `output/runs/`.\n")
+    return "\n".join(lines)
+def render_onepager_plain(pack: Dict[str, Any]) -> str:
+    """
+    Render a one-page, plain-English summary for non-engineers.
+    Strictly follows the required headings and selection logic.
+    """
+    import datetime
+    lines = []
+    lines.append("# Repository Reconnaissance — One-Pager")
+    lines.append("")
+    # 2. What it does
+    lines.append("## What it does")
+    lines.append("")
+    lines.append("This tool analyzes a software repository to produce a deterministic, evidence-backed summary of its structure, deployment, security posture, and operational readiness. It is designed to help technical leaders and decision-makers quickly understand what is present, what is missing, and how much can be trusted—without requiring code review skills.")
+    lines.append("")
+    # 3. What it produced for this repo
+    lines.append("## What it produced for this repo")
+    lines.append("")
+    artifacts = pack.get("artifacts", [])
+    if not artifacts:
+        # Fallback: try to infer from summary
+        summary = pack.get("summary", {})
+        artifacts = summary.get("artifacts", [])
+    if artifacts:
+        lines.append("Artifacts generated:")
+        for art in artifacts[:5]:
+            lines.append(f"- {art}")
+        if len(artifacts) > 5:
+            lines.append(f"- ...and {len(artifacts)-5} more.")
+    else:
+        lines.append("- Evidence pack, report, and manifest files.")
+    lines.append("")
+    # 4. What it found (verified)
+    lines.append("## What it found (verified)")
+    lines.append("")
+    # Deterministic selection of top 5 verified claims
+    verified_sections = _get_verified_sections(pack)
+    verified_claims = []
+    for section in [
+        "runtime/entrypoint",
+        "ci/gating",
+        "deployment/model",
+        "security/posture",
+        "output/artifacts",
+    ]:
+        claims = verified_sections.get(section, [])
+        for claim in claims:
+            if claim.get("evidence"):
+                verified_claims.append((section, claim))
+            if len(verified_claims) >= 5:
+                break
+        if len(verified_claims) >= 5:
+            break
+    # Fallback: fill with any other verified claims if <5
+    if len(verified_claims) < 5:
+        for section, claims in verified_sections.items():
+            for claim in claims:
+                if claim.get("evidence") and (section, claim) not in verified_claims:
+                    verified_claims.append((section, claim))
+                if len(verified_claims) >= 5:
+                    break
+            if len(verified_claims) >= 5:
+                break
+    if len(verified_claims) == 0:
+        lines.append("- No verified claims with deterministic evidence were found.")
+    else:
+        for section, claim in verified_claims[:5]:
+            stmt = claim.get("statement") or claim.get("summary") or section
+            lines.append(f"- {stmt}")
+    if len(verified_claims) < 3:
+        lines.append("")
+        lines.append("Fewer than 3 verified claims were available; see Unknowns and Evidence Pack.")
+    lines.append("")
+    # 5. What’s missing (unknowns)
+    lines.append("## What’s missing (unknowns)")
+    lines.append("")
+    unknowns = pack.get("unknowns", [])
+    # Deterministic selection of top 5 unknowns
+    priority_unknowns = [
+        "deployment/docs",
+        "ops/runbook",
+        "dr/disaster_recovery",
+        "api/map",
+        "frontend/prod_build",
+    ]
+    selected_unknowns = []
+    for cat in priority_unknowns:
+        for u in unknowns:
+            if u.get("category") == cat and u.get("status") == "UNKNOWN":
+                selected_unknowns.append(u)
+                break
+        if len(selected_unknowns) >= 5:
+            break
+    # Fill with any other unknowns if <5
+    if len(selected_unknowns) < 5:
+        for u in unknowns:
+            if u.get("status") == "UNKNOWN" and u not in selected_unknowns:
+                selected_unknowns.append(u)
+            if len(selected_unknowns) >= 5:
+                break
+    if not selected_unknowns:
+        lines.append("- No unknowns detected.")
+    else:
+        for u in selected_unknowns:
+            cat = u.get("category", "?")
+            desc = u.get("description", "No description.")
+            evidence_needed = u.get("evidence_needed") or u.get("closure_hint") or "Evidence required to close this unknown."
+            lines.append(f"- {cat}: {desc} (To close: {evidence_needed})")
+    lines.append("")
+    # 6. Why you should trust it
+    lines.append("## Why you should trust it")
+    lines.append("")
+    lines.append("- All verified claims are backed by deterministic evidence (file hashes, code snippets, or file existence).\n- No claims are promoted to verified without evidence.\n- Unknowns are explicitly listed with what evidence would close them.\n- The tool never infers or guesses claim status.")
+    completeness = pack.get("metrics", {}).get("completeness_score")
+    if completeness is not None:
+        lines.append("")
+        lines.append(f"Completeness score: {completeness}/100 (computed from verified claims, unknowns, and how-to coverage).")
+    lines.append("")
+    # 7. How to run it
+    lines.append("## How to run it")
+    lines.append("")
+    lines.append("1. Install Python 3.10+ and create a virtual environment.")
+    lines.append("2. Install dependencies: `pip install -r requirements.txt`")
+    lines.append("3. Run the analyzer:\n")
+    lines.append("   ../../.venv/bin/python -m analyzer_cli analyze ../.. --output-dir ../../output --no-llm --render-mode engineer\n")
+    lines.append("4. Find the outputs in the latest run directory under `output/runs/`.\n")
+    lines.append("")
+    return "\n".join(lines)
 """
 Phase 3: Mode Rendering
 
@@ -24,6 +348,8 @@ def render_report(pack: Dict[str, Any], mode: str = "engineer") -> str:
         return _render_auditor(pack)
     elif mode == "executive":
         return _render_executive(pack)
+    elif mode == "plain":
+        return render_onepager_plain(pack)
     else:
         return _render_engineer(pack)
 

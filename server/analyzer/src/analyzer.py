@@ -187,23 +187,12 @@ class Analyzer:
             pass
         return None
 
-    async def run(self, *, include_history=False, history_since="90d", history_top=15, history_include=None, history_exclude=None):
+    async def run(self, *, include_history=False, history_since="90d", history_top=15, history_include=None, history_exclude=None, demo=False):
         # ...existing code before completeness breakdown...
         breakdown = self._compute_completeness()
         import json
         from pathlib import Path
         print("DEBUG: computing completeness breakdown", flush=True)
-        breakdown_path = Path(self.run_dir) / "completeness_breakdown.json"
-        breakdown_path.parent.mkdir(parents=True, exist_ok=True)
-        breakdown_path.write_text(json.dumps(breakdown, indent=2, sort_keys=True), encoding="utf-8")
-        print(f"Wrote completeness breakdown: {breakdown_path}", flush=True)
-        print("DEBUG: completeness breakdown computed", flush=True)
-        # ...existing code after completeness breakdown...
-        # --- Phase 2: Deterministic run folder, manifest, staged execution, env validation ---
-        repo_root = str(self.root_scope) if getattr(self, "root_scope", None) else None
-        git_sha = _get_git_sha(self.repo_dir)
-        run_id = f"{_utc_now_compact()}-{git_sha[:7] if git_sha != 'unknown' else 'nogit'}"
-        base_output_dir = self.output_dir
         run_dir = base_output_dir / "runs" / run_id
         run_dir.mkdir(parents=True, exist_ok=True)
         self.run_dir = run_dir
@@ -316,6 +305,30 @@ class Analyzer:
             })
             with open(run_dir / "DOSSIER.md", "w") as f:
                 f.write(dossier)
+            from .core.render import render_onboarding_guide, render_onepager
+            # Prepare excerpts for onboarding guide
+            manifest_excerpt = ""
+            manifest_path = run_dir / "manifest.json"
+            if manifest_path.exists():
+                manifest_excerpt = manifest_path.read_text(encoding="utf-8")[:1000]
+            evidence_pack_excerpt = ""
+            evidence_pack_path = run_dir / "evidence_pack.v1.json"
+            if evidence_pack_path.exists():
+                evidence_pack_excerpt = evidence_pack_path.read_text(encoding="utf-8")[:1000]
+            dossier_excerpt = ""
+            dossier_path = run_dir / "DOSSIER.md"
+            if dossier_path.exists():
+                dossier_excerpt = dossier_path.read_text(encoding="utf-8")[:1000]
+            # Add excerpts to evidence_pack for onboarding rendering
+            evidence_pack["manifest_excerpt"] = manifest_excerpt
+            evidence_pack["evidence_pack_excerpt"] = evidence_pack_excerpt
+            evidence_pack["dossier_excerpt"] = dossier_excerpt
+            onboarding_content = render_onboarding_guide(evidence_pack)
+            with open(run_dir / "ONBOARDING_GUIDE.md", "w") as f:
+                f.write(onboarding_content)
+            onepager_content = render_onepager(evidence_pack)
+            with open(run_dir / "ONEPAGER.md", "w") as f:
+                f.write(onepager_content)
 
             def build_operate_stage():
                 self.console.print("[bold]Step 5b: Building operate.json...[/bold]")
@@ -659,7 +672,8 @@ class Analyzer:
         ).hexdigest()[:12]
         return actual_hash == claimed_hash
 
-    def _compute_completeness(self, howto: dict) -> dict:
+    def _compute_completeness(self, howto=None) -> dict:
+        howto = howto or {}
         score = 0
         missing = []
         deductions = []
@@ -781,17 +795,6 @@ class Analyzer:
             "deductions": deductions,
             "notes": "; ".join(notes_parts) if notes_parts else None
         }
-        # Write completeness_breakdown.json for audit
-        try:
-            path = self._artifact_path("completeness_breakdown.json")
-            path.parent.mkdir(parents=True, exist_ok=True)
-            self.save_json(path, breakdown)
-            print(f"Wrote completeness breakdown: {path}", flush=True)
-        except Exception as e:
-            print(f"[WARN] Could not write completeness_breakdown.json to {path}: {e}", flush=True)
-        return breakdown
-
-    async def extract_howto(self, packs: Dict[str, str]) -> Dict[str, Any]:
         replit_context = ""
         if self.mode == "replit" and self.replit_profile:
             replit_context = f"""
@@ -840,6 +843,8 @@ RULES:
 """
 
         user_content = (
+            packs = {};
+
             f"DOCS:\n{packs.get('docs', '')[:40000]}\n\n"
             f"CONFIG:\n{packs.get('config', '')[:40000]}\n\n"
             f"OPS:\n{packs.get('ops', '')[:20000]}"
