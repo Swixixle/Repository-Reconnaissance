@@ -91,5 +91,106 @@
         }
       }
     }
+    ,
+    "coverage": {
+      "type": "object",
+      "required": ["total_files", "analyzed_files", "skipped_files", "skipped_reasons", "percent_coverage", "directories"],
+      "properties": {
+        "total_files": { "type": "integer" },
+        "analyzed_files": { "type": "integer" },
+        "skipped_files": { "type": "array", "items": { "type": "string" } },
+        "skipped_reasons": { "type": "array", "items": { "type": "string" } },
+        "percent_coverage": { "type": "number", "minimum": 0, "maximum": 1 },
+        "directories": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path", "coverage_percent", "analyzed_count", "skipped_count"],
+            "properties": {
+              "path": { "type": "string" },
+              "coverage_percent": { "type": "number", "minimum": 0, "maximum": 1 },
+              "analyzed_count": { "type": "integer" },
+              "skipped_count": { "type": "integer" }
+            }
+          }
+        }
+      }
+    },
+    "trust_score": {
+      "type": "object",
+      "required": ["numeric_score", "grade", "confidence_band"],
+      "properties": {
+        "numeric_score": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "grade": { "type": "string", "enum": ["A", "B", "C", "D", "E", "F"] },
+        "confidence_band": { "type": "string", "enum": ["High", "Medium", "Low"] }
+      }
+    },
+    "checklist_findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["category", "status", "evidence"],
+        "properties": {
+          "category": { "type": "string" },
+          "status": { "type": "string", "enum": ["FOUND", "ABSENT", "UNKNOWN"] },
+          "evidence": { "type": "string" }
+        }
+      }
+    },
+    "longitudinal": {
+      "type": "object",
+      "required": ["baseline_commit", "current_commit", "time_delta_seconds", "verified", "unknown", "inferred_changes", "confidence_delta", "risk_delta_score"],
+      "properties": {
+        "baseline_commit": { "type": "string" },
+        "current_commit": { "type": "string" },
+        "time_delta_seconds": { "type": "integer" },
+        "verified": {
+          "type": "object",
+          "required": ["still_valid", "drifted", "invalidated", "newly_verified"],
+          "properties": {
+            "still_valid": { "type": "array", "items": { "type": "string" } },
+            "drifted": { "type": "array", "items": { "type": "string" } },
+            "invalidated": { "type": "array", "items": { "type": "string" } },
+            "newly_verified": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "unknown": {
+          "type": "object",
+          "required": ["persisted_unknowns", "resolved_unknowns", "new_unknowns"],
+          "properties": {
+            "persisted_unknowns": { "type": "array", "items": { "type": "string" } },
+            "resolved_unknowns": { "type": "array", "items": { "type": "string" } },
+            "new_unknowns": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "inferred_changes": { "type": "array", "items": { "type": "string" } },
+        "confidence_delta": { "type": "number" },
+        "risk_delta_score": { "type": "number" }
+      }
+    },
+    "risk_delta": { "type": "number" },
+    "portfolio": {
+      "type": "object",
+      "required": ["repos", "weakest_repo", "strongest_repo", "average_trust_score", "risk_ranked_list"],
+      "properties": {
+        "repos": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "trust_score", "coverage_percent", "critical_unknowns"],
+            "properties": {
+              "name": { "type": "string" },
+              "trust_score": { "type": "integer" },
+              "coverage_percent": { "type": "number" },
+              "critical_unknowns": { "type": "integer" }
+            }
+          }
+        },
+        "weakest_repo": { "type": "string" },
+        "strongest_repo": { "type": "string" },
+        "average_trust_score": { "type": "number" },
+        "risk_ranked_list": { "type": "array", "items": { "type": "string" } }
+      }
+    }
   }
 }

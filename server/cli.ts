@@ -5,10 +5,11 @@ import { hideBin } from "yargs/helpers";
 
 import { registerVerifyClaim } from "./verifyClaim";
 import { registerAudit } from "./audit";
-import { registerDiffDossier } from "./diffDossier";
 import { registerValidateDossier } from "./validateDossier";
+import { registerDiffDossier } from "./diffDossier";
+import { registerMonitor } from "./monitor";
 
-export function main(argv = process.argv) {
+function main(argv = process.argv) {
   const y = yargsFactory(hideBin(argv))
     .scriptName("reporecon")
     .strict()
@@ -19,10 +20,11 @@ export function main(argv = process.argv) {
   registerAudit(y);
   registerValidateDossier(y);
   registerDiffDossier(y);
+  registerMonitor(y);
 
-  return y.parse();
+  y.parse();
 }
 
 if (require.main === module) {
-  main();
+  main(process.argv);
 }

@@ -1,0 +1,64 @@
+{
+  "schema_version": "dossier_v2",
+  "generator": {
+    "name": "Repo Recon",
+    "version": "1.0.0",
+    "git_sha": "current123",
+    "build_time": "2026-02-24T01:00:00Z"
+  },
+  "target": {
+    "repo_url": "file:///tmp/monitor-fixture",
+    "commit_sha": "commitA",
+    "default_branch": "main"
+  },
+  "canonicalization_version": "v1",
+  "hash_algorithm": "sha256",
+  "hash_encoding": "hex",
+  "created_at": "2026-02-24T01:00:00Z",
+  "claims": [
+    {
+      "claim_id": "claim1",
+      "fingerprint": "fp1",
+      "epistemic_status": "VERIFIED",
+      "claim_type": "MODULE_EXISTENCE",
+      "subject": "src/fileA.js",
+      "summary": "File exists",
+      "evidence": [
+        {
+          "repo_commit": "commitA",
+          "file": "src/fileA.js",
+          "line_start": 1,
+          "line_end": 1,
+          "excerpt_hash": "hashA"
+        }
+      ]
+    },
+    {
+      "claim_id": "claim2",
+      "fingerprint": "fp2",
+      "epistemic_status": "UNKNOWN",
+      "claim_type": "CONFIGURATION",
+      "subject": "src/config.json",
+      "summary": "Config missing",
+      "evidence": [
+        {
+          "repo_commit": "commitA",
+          "file": "src/config.json",
+          "line_start": 1,
+          "line_end": 1,
+          "excerpt_hash": "hashB"
+        }
+      ]
+    }
+  ],
+  "scores": {
+    "confidence_overall": 0.8,
+    "confidence_weighted": 0.8,
+    "critical_unknowns": 1,
+    "core_module_coverage": 0.9
+  },
+  "questions_for_maintainer": [],
+  "security_warnings": [],
+  "dossier_hash": "dossierhashB",
+  "audit_trail": []
+}
