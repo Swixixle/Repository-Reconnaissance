@@ -13,14 +13,18 @@ Evidence-first static analysis that generates operational dossiers and readiness
 
 ---
 
-## Quick Links
 
-* [Installation & Setup](docs/QUICKSTART.md)
-* [API Documentation](docs/API.md)
-* [Deployment Guide](docs/DEPLOYMENT.md)
-* [Security & Disclosure Policy](docs/SECURITY_AND_DISCLOSURE.md)
 
----
+## Documentation
+
+- [Quickstart](docs/QUICKSTART.md)
+- [API](docs/API.md)
+- [Data Model](docs/DATA_MODEL.md)
+- [Operations](docs/OPERATIONS.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [DB Migrations](docs/DB_MIGRATIONS.md)
+
+----
 
 <details>
 <summary><strong>Detailed Documentation (Click to expand)</strong></summary>

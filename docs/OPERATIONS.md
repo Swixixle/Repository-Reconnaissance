@@ -1,6 +1,15 @@
+
 # Operations Guide
 
 Quick reference for deploying, monitoring, and maintaining PTA in production.
+
+
+## Documentation Links
+
+- [Quickstart](QUICKSTART.md): First-time install and setup
+- [API](API.md): Endpoint contracts and authentication model
+- [Data Model](DATA_MODEL.md): Database schema
+- [DB Migrations](DB_MIGRATIONS.md): Migration workflow and operational limitations
 
 ## Health Checks
 

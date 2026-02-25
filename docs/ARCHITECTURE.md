@@ -1,4 +1,15 @@
+
 # Architecture
+
+
+## Documentation Links
+
+- [API](API.md): Endpoint contracts and authentication model
+- [Data Model](DATA_MODEL.md): Database schema
+
+## Code Pointers
+- Node server routes: [server/routes.ts](server/routes.ts)
+- Python analyzer orchestration: [runAnalysis](server/routes.ts) spawns [server/analyzer/analyzer_cli.py](server/analyzer/analyzer_cli.py)
 
 ## High-Level Components
 
