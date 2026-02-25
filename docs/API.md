@@ -1,256 +1,179 @@
-# API Reference
 
-Base URL: `https://<your-app-domain>/api`
+# API.md
 
-All endpoints return JSON. Error responses include a `message` field.
+## Base URL
 
-## Project Analysis
+- Default: `http://localhost:3000/`
+- Note: May be proxied in production; confirm deployment config.
 
-### `GET /api/projects`
+## Authentication
 
-List all projects.
+- **API access:** Header `X-Api-Key` (API_KEY env var)
+- **Admin endpoints:** Header `X-Admin-Key` (ADMIN_KEY env var)
+- **GitHub webhook:** Header `X-Hub-Signature-256` (HMAC SHA-256, GITHUB_WEBHOOK_SECRET env var)
+- **Conditional auth:**
+  - Production: Missing API_KEY causes 500 "API authentication not configured"
+  - Development: Missing API_KEY allows access
+  - Admin: Production missing ADMIN_KEY causes 500 "Admin authentication not configured"; dev missing key allows access and logs `admin_unguarded`
 
-**Response:**
-```json
-[
-  {
-    "id": 1,
-    "url": "https://github.com/user/repo",
-    "name": "repo",
-    "mode": "github",
-    "status": "completed",
-    "createdAt": "2025-01-01T00:00:00.000Z"
-  }
-]
-```
+## Rate Limiting
 
-### `POST /api/projects`
+- Per endpoint, enforced by custom limiter functions:
+  - `healthRateLimiter`, `projectApiRateLimiter`, `ciApiRateLimiter`, `dossierRateLimiter`, `adminAuthRateLimiter`, `evidenceBundleRateLimiter`, `webhookRateLimiter`
+  - Test mode disables rate limits via `DISABLE_RATE_LIMITS`, `NODE_ENV=test`, or `ENV=TEST`
 
-Create a new project.
+## Endpoints
 
-**Request body:**
-```json
-{
-  "url": "https://github.com/user/repo",
-  "name": "repo",
-  "mode": "github"
-}
-```
+### Health
+- GET `/health` — Rate limited, no auth
+- GET `/api/health` — Rate limited, API_KEY required in production for details
 
-`mode` must be one of: `github`, `local`, `replit`.
+### Projects
+- GET `/api/projects` — Rate limited, API_KEY required
+- POST `/api/projects` — Rate limited, API_KEY required, body validated by zod schema
+- GET `/api/projects/:id` — Rate limited, API_KEY required
+- GET `/api/projects/:id/analysis` — Rate limited, API_KEY required
+- POST `/api/projects/:id/analyze` — Rate limited, API_KEY required, triggers Python orchestration
+- POST `/api/projects/analyze-replit` — Rate limited, API_KEY required, triggers Python orchestration
 
-### `GET /api/projects/:id`
+### Dossiers
+- GET `/api/dossiers/lantern` — Rate limited, public, returns markdown
 
-Get a single project by ID.
+### Admin
+- GET `/api/admin/analyzer-log` — Rate limited, ADMIN_KEY required
+- POST `/api/admin/analyzer-log/clear` — Rate limited, ADMIN_KEY required
+- POST `/api/admin/reset-analyzer` — Rate limited, ADMIN_KEY required
 
-### `GET /api/projects/:id/analysis`
+### Evidence Bundles
+- POST `/api/certificates` — Rate limited, API_KEY required, body validated by zod schema
+- GET `/api/certificates/:id/evidence-bundle.json` — Rate limited, API_KEY required
+- GET `/api/certificates/:id` — Rate limited, API_KEY required
+- POST `/api/certificates/verify` — Rate limited, public
+- GET `/api/certificates` — Rate limited, API_KEY required, query param `tenant_id` required
 
-Get analysis results for a project.
+### Webhooks
+- POST `/api/webhooks/github` — Rate limited, HMAC signature required, deduplication via `checkAndRecordDelivery()`
+  - Note: Route appears twice in file; Express uses last registration.
 
-### `POST /api/projects/:id/analyze`
+### CI
+- GET `/api/ci/runs` — Rate limited, API_KEY required, query params `owner`, `repo` required
+- GET `/api/ci/runs/:id` — Rate limited, API_KEY required
+- POST `/api/ci/enqueue` — Rate limited, API_KEY required, body fields validated
+- POST `/api/ci/worker/tick` — Rate limited, API_KEY required
+- GET `/api/ci/health` — Rate limited, API_KEY required
 
-Trigger analysis for a project. Spawns the Python analyzer as a child process.
+## Request/Response Shapes
 
----
+- Request bodies validated by zod schemas in `shared/routes.ts`.
+- Responses:
+  - Projects: DB row shape (see DATA_MODEL)
+  - Analyses: DB row shape (see DATA_MODEL)
+  - CI runs/jobs: DB row shape (see DATA_MODEL)
+  - Certificates: DB row shape (see DATA_MODEL)
+  - Errors: `{ error: "..." }`, `{ message: "..." }`, `{ ok: false, error: "..." }` (documented as-is)
 
-## Live Static CI Feed
+## Special Notes
 
-### `POST /api/webhooks/github`
+- `/api/health` returns 503 on error and includes a `status` + `checks` object. In prod, internal errors may be masked unless authenticated.
+- `/api/dossiers/lantern` returns markdown (`text/markdown`) and is public but rate limited.
+- Webhook route includes replay deduplication using `checkAndRecordDelivery()` and returns 202 for deduped replays and ignored events.
+- `/api/certificates/verify` is public (no `requireAuth`) but rate limited.
+- Two `app.post("/api/webhooks/github"...)` declarations in `server/routes.ts`: document that only one is registered/active (Express uses last registration).
 
-GitHub webhook receiver. Validates HMAC-SHA256 signature from the `X-Hub-Signature-256` header against the `GITHUB_WEBHOOK_SECRET` env var.
+## Code Pointers
 
-**Replay Protection:** The endpoint deduplicates webhook deliveries using the `X-GitHub-Delivery` header. Repeated deliveries with the same delivery ID will not create duplicate CI runs.
+- `server/routes.ts` — All route definitions, auth, rate limiting, Python orchestration
+- `shared/routes.ts` — Route schemas, zod validation
+- `server/storage.ts` — DB access, certificate storage
+- `server/db.ts` — DB connection, env usage
+- `shared/schema.ts` — Drizzle table definitions
+- `drizzle.config.ts` — Migration config
+- `.env.example` — Environment variable reference
+- `server/analyzer/analyzer_cli.py` — Python entrypoint
+- Request: JSON body (fields as per zod schema in server/routes.ts)
+- Returns: Project object (see Data Model)
 
-**Accepted events:** `push`, `pull_request`
+### /api/projects/:id [GET]
+- Admin Key required
+- Request: URL param `id`
+- Returns: Project object (see Data Model)
 
-**Headers required:**
-- `X-Hub-Signature-256`: HMAC-SHA256 signature of the request body (required for authentication)
-- `X-GitHub-Event`: Event type (`push` or `pull_request`) (required)
-- `X-GitHub-Delivery`: Unique delivery ID from GitHub (required for replay protection)
-- `Content-Type`: `application/json`
+### /api/projects/:id [PUT]
+- Admin Key required
+- Request: URL param `id`, JSON body
+- Returns: Updated project object (see Data Model)
 
-**Response (success):**
-```json
-{
-  "ok": true,
-  "run_id": "9c0ed034-9242-4b46-ae22-1f3baa72f4c8"
-}
-```
+### /api/projects/:id [DELETE]
+- Admin Key required
+- Request: URL param `id`
+- Returns: `{ deleted: true }`
 
-**Response (replayed delivery — same X-GitHub-Delivery ID):**
-```json
-{
-  "ok": true,
-  "deduped": true
-}
-```
-Status code: `202 Accepted`
+### /api/analyses/:id [GET]
+- Admin Key required
+- Request: URL param `id`
+- Returns: Analysis object (see Data Model)
 
-**Response (deduplicated — same owner/repo/SHA within 6 hours):**
-```json
-{
-  "ok": true,
-  "run_id": "9c0ed034-9242-4b46-ae22-1f3baa72f4c8",
-  "deduplicated": true
-}
-```
+### /api/analyses [POST]
+- Admin Key required
+- Request: JSON body (fields as per zod schema in server/routes.ts)
+- Returns: Analysis object (see Data Model)
 
-**Response (signature invalid):**
-```
-401 Unauthorized
-```
+### /api/ci/runs [GET]
+- Admin Key required
+- Returns: Array of CI run objects (see Data Model)
 
-**Response (missing required headers):**
-```
-400 Bad Request - missing X-GitHub-Delivery or X-GitHub-Event
-```
+### /api/ci/enqueue [POST]
+- Admin Key required
+- Request: JSON body (fields as per zod schema in server/routes.ts)
+- Returns: `{ runId, status }`
 
-### `GET /api/ci/runs`
+### /api/ci/worker/tick [POST]
+- Admin Key required
+- Returns: `{ status }`
 
-List CI runs for a repository.
+### /api/operate/:runId [GET]
+- Admin Key required
+- Request: URL param `runId`
+- Returns: Raw operate.json content
 
-**Query parameters:**
-| Param | Required | Default | Description |
-|-------|----------|---------|-------------|
-| `owner` | Yes | — | Repository owner |
-| `repo` | Yes | — | Repository name |
-| `limit` | No | 50 | Max runs to return |
+### /api/dossier/:runId [GET]
+- Admin Key required
+- Request: URL param `runId`
+- Returns: Raw DOSSIER.md content
 
-**Response:**
-```json
-{
-  "ok": true,
-  "runs": [
-    {
-      "id": "9c0ed034-9242-4b46-ae22-1f3baa72f4c8",
-      "repoOwner": "octocat",
-      "repoName": "hello-world",
-      "ref": "main",
-      "commitSha": "abc123def456789...",
-      "eventType": "push",
-      "status": "SUCCEEDED",
-      "createdAt": "2025-01-01T00:00:00.000Z",
-      "startedAt": "2025-01-01T00:00:01.000Z",
-      "finishedAt": "2025-01-01T00:01:30.000Z",
-      "error": null,
-      "outDir": "out/ci/9c0ed034-9242-4b46-ae22-1f3baa72f4c8",
-      "summaryJson": {
-        "boot_commands": 3,
-        "endpoints": 5,
-        "gaps": 2
-      }
-    }
-  ]
-}
-```
+### /api/coverage/:runId [GET]
+- Admin Key required
+- Request: URL param `runId`
+- Returns: Raw coverage.json content
 
-### `GET /api/ci/runs/:id`
+### /api/unknowns/:runId [GET]
+- Admin Key required
+- Request: URL param `runId`
+- Returns: Raw known_unknowns.json content
 
-Get a single CI run by UUID.
+### /api/claims/:runId [GET]
+- Admin Key required
+- Request: URL param `runId`
+- Returns: Raw claims.json content
 
-**Response:** Same shape as a single item from the runs list above.
+### /api/target_howto/:runId [GET]
+- Admin Key required
+- Request: URL param `runId`
+- Returns: Raw target_howto.json content
 
-### `POST /api/ci/enqueue`
+## Error Conventions (Global)
+- 400: Validation error (zod schema)
+- 401: Unauthorized (missing or invalid admin key)
+- 404: Not found (invalid ID or runId)
+- 429: Rate limit exceeded (admin endpoints)
+- 500: Internal server error
 
-Manually enqueue a CI run (useful for testing without webhooks).
+## Data Model
+See docs/DATA_MODEL.md for full schema.
 
-**Request body:**
-```json
-{
-  "owner": "octocat",
-  "repo": "hello-world",
-  "ref": "main",
-  "commit_sha": "abc123def456789abcdef1234567890abcdef123",
-  "event_type": "manual"
-}
-```
-
-**Response:**
-```json
-{
-  "ok": true,
-  "run_id": "9c0ed034-9242-4b46-ae22-1f3baa72f4c8"
-}
-```
-
-If the same owner/repo/SHA was enqueued within the last 6 hours:
-```json
-{
-  "ok": true,
-  "run_id": "9c0ed034-9242-4b46-ae22-1f3baa72f4c8",
-  "deduplicated": true
-}
-```
-
-### `POST /api/ci/worker/tick`
-
-Process one queued job. Fallback mechanism for environments where the background worker loop is not running.
-
-**Response (job processed):**
-```json
-{
-  "ok": true,
-  "processed": true,
-  "run_id": "9c0ed034-9242-4b46-ae22-1f3baa72f4c8"
-}
-```
-
-**Response (no jobs):**
-```json
-{
-  "ok": true,
-  "processed": false
-}
-```
-
-### `GET /api/ci/health`
-
-Health check endpoint showing job queue status and disk space.
-
-**Response:**
-```json
-{
-  "ok": true,
-  "jobs": {
-    "READY": 2,
-    "LEASED": 1,
-    "DONE": 15,
-    "DEAD": 0
-  },
-  "last_completed": {
-    "id": "9c0ed034-9242-4b46-ae22-1f3baa72f4c8",
-    "status": "SUCCEEDED",
-    "finished_at": "2025-01-01T00:01:30.000Z",
-    "repo": "octocat/hello-world"
-  },
-  "ciTmpDir": "/tmp/ci",
-  "ciTmpDirFreeBytes": 10737418240,
-  "ciTmpDirLowDisk": false
-}
-```
-
-**Disk Status Fields:**
-- `ciTmpDir`: Path to the CI temporary directory
-- `ciTmpDirFreeBytes`: Free disk space in bytes (-1 if unavailable)
-- `ciTmpDirLowDisk`: `true` if free space is below 1GB or below 5% of total disk space
-
----
-
-## Webhook Requirements
-
-GitHub webhook configuration:
-
-| Setting | Value |
-|---------|-------|
-| Payload URL | `https://<your-app-domain>/api/webhooks/github` |
-| Content type | `application/json` |
-| Secret | Must match `GITHUB_WEBHOOK_SECRET` env var exactly |
-| Events | Push, Pull requests |
-
-Signature verification uses HMAC-SHA256 with timing-safe comparison. The server checks the `X-Hub-Signature-256` header against the computed signature of the raw request body.
-
-**Replay Protection:**
-
-The webhook endpoint implements replay protection using GitHub's `X-GitHub-Delivery` header. Each unique delivery ID is stored in the `webhook_deliveries` table. If GitHub redelivers a webhook (e.g., from the GitHub UI), the duplicate is detected and rejected with a `202 Accepted` response containing `{"ok": true, "deduped": true}`. This prevents duplicate CI runs from being created.
-
-Additionally, the system deduplicates runs based on repository and commit SHA: if the same owner/repo/SHA is received within 6 hours, the existing run is returned instead of creating a new one.
+## Code Pointers
+- Server entry: server/index.ts
+- Router: server/routes.ts
+- Auth middleware: server/routes.ts (requireDevAdmin)
+- DB schema: shared/schema.ts
+- Migrations config: drizzle.config.ts
