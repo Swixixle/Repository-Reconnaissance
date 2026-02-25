@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Coverage Report V1",
+  "type": "object",
+  "properties": {
+    "schema_version": { "type": "string", "const": "coverage_report_v1" },
+    "repo_path": { "type": "string" },
+    "commit_sha": { "type": "string" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "total_files": { "type": "integer" },
+        "analyzed_files": { "type": "integer" },
+        "skipped_files": { "type": "integer" },
+        "percent_coverage": { "type": "number" },
+        "statuses": {
+          "type": "object",
+          "additionalProperties": { "type": "integer" }
+        },
+        "skipped_reasons": {
+          "type": "object",
+          "additionalProperties": { "type": "integer" }
+        },
+        "directories": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": { "type": "string" },
+              "total_files": { "type": "integer" },
+              "analyzed_files": { "type": "integer" },
+              "skipped_files": { "type": "integer" },
+              "percent_coverage": { "type": "number" }
+            },
+            "required": ["path", "total_files", "analyzed_files", "skipped_files", "percent_coverage"]
+          }
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": { "type": "string" },
+              "status": { "type": "string" },
+              "reason": { "type": "string" },
+              "bytes": { "type": "integer" },
+              "language": { "type": "string" },
+              "analyzed_by": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            },
+            "required": ["path", "status"]
+          }
+        }
+      },
+      "required": ["total_files", "analyzed_files", "skipped_files", "percent_coverage", "statuses", "skipped_reasons", "directories", "files"]
+    }
+  },
+  "required": ["schema_version", "repo_path", "commit_sha", "generated_at", "summary"]
+}

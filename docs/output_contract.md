@@ -1,3 +1,80 @@
+# coverage (coverage_report_v1)
+
+## CLI Usage
+
+```
+reporecon coverage <repo-path> --out <coverage.json> [--max-bytes N] [--exclude <glob>...]
+```
+
+## coverage_report_v1 JSON shape
+
+```
+{
+  "schema_version": "coverage_report_v1",
+  "repo_path": <string>,
+  "commit_sha": <string>,
+  "generated_at": <ISO datetime>,
+  "summary": {
+    "total_files": <integer>,
+    "analyzed_files": <integer>,
+    "skipped_files": <integer>,
+    "percent_coverage": <number>,
+    "statuses": { <FileCoverageStatus>: <integer> },
+    "skipped_reasons": { <CoverageReason>: <integer> },
+    "directories": [
+      {
+        "path": <string>,
+        "total_files": <integer>,
+        "analyzed_files": <integer>,
+        "skipped_files": <integer>,
+        "percent_coverage": <number>
+      }
+    ],
+    "files": [
+      {
+        "path": <string>,
+        "status": <FileCoverageStatus>,
+        "reason": <CoverageReason>,
+        "bytes": <integer>,
+        "language": <string>,
+        "analyzed_by": [<string>]
+      }
+    ]
+  }
+}
+```
+
+## dossier embedding
+
+```
+{
+  "coverage": {
+    "total_files": <integer>,
+    "analyzed_files": <integer>,
+    "skipped_files": <integer>,
+    "percent_coverage": <number>,
+    "statuses": { <FileCoverageStatus>: <integer> },
+    "skipped_reasons": { <CoverageReason>: <integer> },
+    "directories": [
+      {
+        "path": <string>,
+        "total_files": <integer>,
+        "analyzed_files": <integer>,
+        "skipped_files": <integer>,
+        "percent_coverage": <number>
+      }
+    ],
+    "coverage_report_ref": <string>
+  }
+}
+```
+
+## UNKNOWN vs UNANALYZED
+
+- UNKNOWN: File was analyzed and found insufficient evidence for a claim.
+- UNANALYZED: File was not examined (skipped, unsupported, excluded, binary, too large, error).
+
+This distinction is explicit in coverage.json and dossier coverage block.
 # Output Contract for Repo Recon
 
 This document specifies the output formats for CLI commands and JSON reports, freezing the contract for downstream verification and scripting.

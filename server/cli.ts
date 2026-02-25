@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+console.error("[cli.ts] loaded");
 
 import yargsFactory from "yargs/yargs";
 import { hideBin } from "yargs/helpers";
@@ -6,25 +6,27 @@ import { hideBin } from "yargs/helpers";
 import { registerVerifyClaim } from "./verifyClaim";
 import { registerAudit } from "./audit";
 import { registerValidateDossier } from "./validateDossier";
-import { registerDiffDossier } from "./diffDossier";
 import { registerMonitor } from "./monitor";
+import { registerCoverage } from "./coverage"; // MUST exist
 
-function main(argv = process.argv) {
+export function main(argv = process.argv) {
   const y = yargsFactory(hideBin(argv))
     .scriptName("reporecon")
     .strict()
-    .demandCommand(1)
-    .help();
+    .recommendCommands()
+    .help()
+    .wrap(Math.min(120, yargsFactory(hideBin(argv)).terminalWidth()));
 
   registerVerifyClaim(y);
   registerAudit(y);
   registerValidateDossier(y);
-  registerDiffDossier(y);
   registerMonitor(y);
+  registerCoverage(y);
 
-  y.parse();
+    return y.parse();
+  return y.parse();
 }
 
 if (require.main === module) {
-  main(process.argv);
+  main();
 }

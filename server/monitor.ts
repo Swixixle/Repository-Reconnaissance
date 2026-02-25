@@ -23,13 +23,23 @@ export function registerMonitor(y: Argv) {
         }),
     async (argv) => {
       try {
-        const { repo, baseline, out } = argv;
-        const result = monitorDrift(repo, baseline, out);
+        const repo = typeof argv.repo === 'string' ? argv.repo : '';
+        const baseline = typeof argv.baseline === 'string' ? argv.baseline : '';
+        const out = typeof argv.out === 'string' ? argv.out : '';
+        const result = await monitorDrift({
+          repoPath: repo,
+          baselinePath: baseline,
+          outPath: out,
+        });
         console.log('Drift report written to', out);
         console.log(JSON.stringify(result, null, 2));
         process.exit(0);
       } catch (err) {
-        console.error('Monitor failed:', err.message);
+        if (err instanceof Error) {
+          console.error('Monitor failed:', err.message);
+        } else {
+          console.error('Monitor failed:', err);
+        }
         process.exit(2);
       }
     }

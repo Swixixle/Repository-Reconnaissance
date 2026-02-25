@@ -94,26 +94,35 @@
     ,
     "coverage": {
       "type": "object",
-      "required": ["total_files", "analyzed_files", "skipped_files", "skipped_reasons", "percent_coverage", "directories"],
+      "required": ["total_files", "analyzed_files", "skipped_files", "percent_coverage", "statuses", "skipped_reasons", "directories"],
       "properties": {
         "total_files": { "type": "integer" },
         "analyzed_files": { "type": "integer" },
-        "skipped_files": { "type": "array", "items": { "type": "string" } },
-        "skipped_reasons": { "type": "array", "items": { "type": "string" } },
-        "percent_coverage": { "type": "number", "minimum": 0, "maximum": 1 },
+        "skipped_files": { "type": "integer" },
+        "percent_coverage": { "type": "number" },
+        "statuses": {
+          "type": "object",
+          "additionalProperties": { "type": "integer" }
+        },
+        "skipped_reasons": {
+          "type": "object",
+          "additionalProperties": { "type": "integer" }
+        },
         "directories": {
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["path", "coverage_percent", "analyzed_count", "skipped_count"],
             "properties": {
               "path": { "type": "string" },
-              "coverage_percent": { "type": "number", "minimum": 0, "maximum": 1 },
-              "analyzed_count": { "type": "integer" },
-              "skipped_count": { "type": "integer" }
-            }
+              "total_files": { "type": "integer" },
+              "analyzed_files": { "type": "integer" },
+              "skipped_files": { "type": "integer" },
+              "percent_coverage": { "type": "number" }
+            },
+            "required": ["path", "total_files", "analyzed_files", "skipped_files", "percent_coverage"]
           }
-        }
+        },
+        "coverage_report_ref": { "type": "string" }
       }
     },
     "trust_score": {

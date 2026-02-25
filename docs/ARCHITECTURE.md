@@ -169,3 +169,13 @@ Tables relevant to CI feed:
 | `ANALYZER_TIMEOUT_MS` | No | `600000` (10 min) | Analyzer process timeout |
 | `AI_INTEGRATIONS_OPENAI_API_KEY` | For LLM mode | — | OpenAI API key |
 | `AI_INTEGRATIONS_OPENAI_BASE_URL` | For LLM mode | — | OpenAI API base URL |
+
+## Node ↔ Python Process Orchestration
+
+Node.js invokes Python via child_process.spawn or exec.
+- Data is transported as JSON via stdout.
+- Errors are propagated by exit code and stderr output.
+- Timeout is handled by ANALYZER_TIMEOUT_MS environment variable.
+- No explicit retry logic is implemented.
+- Resource constraints are set by process timeout and environment.
+- Concurrency is managed by job queue; each analysis runs in a dedicated workspace directory.

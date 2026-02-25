@@ -5,8 +5,8 @@ export function diffDossier(oldPath: string, newPath: string, outPath: string) {
   const oldDossier = JSON.parse(fs.readFileSync(oldPath, 'utf8'));
   const newDossier = JSON.parse(fs.readFileSync(newPath, 'utf8'));
 
-  const oldClaims = Object.fromEntries((oldDossier.claims || []).map(c => [c.fingerprint || c.claim_id, c]));
-  const newClaims = Object.fromEntries((newDossier.claims || []).map(c => [c.fingerprint || c.claim_id, c]));
+  const oldClaims = Object.fromEntries((oldDossier.claims || []).map((c: any) => [c.fingerprint || c.claim_id, c]));
+  const newClaims = Object.fromEntries((newDossier.claims || []).map((c: any) => [c.fingerprint || c.claim_id, c]));
 
   // UNKNOWNs
   const oldUnknowns = Object.values(oldClaims).filter(c => c.epistemic_status === 'UNKNOWN');
