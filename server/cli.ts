@@ -5,6 +5,7 @@ import { hideBin } from "yargs/helpers";
 
 import { registerVerifyClaim } from "./verifyClaim";
 import { registerAudit } from "./audit";
+import { registerDiffDossier } from "./diffDossier";
 import { registerValidateDossier } from "./validateDossier";
 
 export function main(argv = process.argv) {
@@ -17,6 +18,7 @@ export function main(argv = process.argv) {
   registerVerifyClaim(y);
   registerAudit(y);
   registerValidateDossier(y);
+  registerDiffDossier(y);
 
   return y.parse();
 }

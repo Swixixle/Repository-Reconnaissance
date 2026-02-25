@@ -1,0 +1,38 @@
+{
+  "created_at": "2026-02-24T12:00:00Z",
+  "generator": {
+    "version": "1.0.0"
+  },
+  "target": {
+    "repo_url": "https://github.com/example/repo",
+    "commit_sha": "def456"
+  },
+  "run_id": "run-002",
+  "claims": [
+    {
+      "claim_id": "C-1",
+      "fingerprint": "fp-1",
+      "epistemic_status": "UNKNOWN",
+      "claim_type": "MODULE_EXISTENCE",
+      "subject": "moduleA",
+      "summary": "Module A existence is not documented.",
+      "unknown_reason": "No evidence found."
+    },
+    {
+      "claim_id": "C-3",
+      "fingerprint": "fp-3",
+      "epistemic_status": "UNKNOWN",
+      "claim_type": "CONFIGURATION",
+      "subject": "configC",
+      "summary": "Config C is missing."
+    },
+    {
+      "claim_id": "C-2",
+      "fingerprint": "fp-2",
+      "epistemic_status": "VERIFIED",
+      "claim_type": "FUNCTION_SIGNATURE",
+      "subject": "funcB",
+      "summary": "Function B signature matches spec."
+    }
+  ]
+}
