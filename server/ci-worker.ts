@@ -350,7 +350,11 @@ async function runAnalyzerOnDir(
   runId: string
 ): Promise<{ success: boolean; error?: string; errorCode?: string; summary?: any }> {
   const pythonBin = process.env.PYTHON_EXEC_PATH || "python3";
-  if (!existsSync(pythonBin)) {
+  const pythonExists = pythonBin.startsWith("/")
+    ? existsSync(pythonBin)
+    : true; // bare command, trust PATH resolution
+
+  if (!pythonExists) {
     return { 
       success: false, 
       errorCode: CI_ERROR_CODES.PYTHON_NOT_FOUND,

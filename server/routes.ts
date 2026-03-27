@@ -932,7 +932,11 @@ async function runAnalysis(projectId: number, source: string, mode: string) {
   };
 
   const pythonBin = process.env.PYTHON_EXEC_PATH || "python3";
-  if (!existsSync(pythonBin)) {
+  const pythonExists = pythonBin.startsWith("/")
+    ? existsSync(pythonBin)
+    : true; // bare command, trust PATH resolution
+
+  if (!pythonExists) {
     logEvent(projectId, "fatal", { reason: "python_not_found", path: pythonBin });
     await finishOnce("failed", "python_not_found");
     return;
