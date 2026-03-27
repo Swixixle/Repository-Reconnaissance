@@ -1,3 +1,13 @@
+process.on("uncaughtException", (err) => {
+  console.error("[FATAL] Uncaught exception:", err);
+  process.exit(1);
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("[FATAL] Unhandled rejection at:", promise, "reason:", reason);
+  process.exit(1);
+});
+
 import express, { type Request, type Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
@@ -233,9 +243,13 @@ app.use((req, res, next) => {
     await setupVite(httpServer, app);
   }
 
-  // Single deterministic bind with boot report
+  // Single deterministic bind with boot report (no reusePort — unsupported / flaky on some PaaS)
   const { host, port } = config;
-  httpServer.listen({ host, port, reusePort: true }, () => {
+  httpServer.once("error", (err: NodeJS.ErrnoException) => {
+    console.error("[FATAL] HTTP server listen error:", err);
+    process.exit(1);
+  });
+  httpServer.listen(port, host, () => {
     log(`serving on ${host}:${port}`);
     log(JSON.stringify(getBootReport(config)));
   });

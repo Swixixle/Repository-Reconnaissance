@@ -4,14 +4,26 @@ import path from "node:path";
 import Redis from "ioredis";
 import type { InsertAnalysis } from "@shared/schema";
 
-const redisOpts = { maxRetriesPerRequest: null, enableReadyCheck: false } as const;
+const redisOpts = {
+  maxRetriesPerRequest: null,
+  enableReadyCheck: false,
+  lazyConnect: true,
+  retryStrategy(times: number) {
+    if (times > 10) return null;
+    return Math.min(times * 200, 3000);
+  },
+} as const;
 
 let _redis: Redis | null = null;
 
 function getRedis(): Redis | null {
-  const url = process.env.REDIS_URL;
+  const url = process.env.REDIS_URL?.trim();
   if (!url) return null;
-  if (!_redis) _redis = new Redis(url, { ...redisOpts });
+  if (!_redis) {
+    const r = new Redis(url, { ...redisOpts });
+    r.on("error", (err) => console.error("[redis:run-cache]", err.message));
+    _redis = r;
+  }
   return _redis;
 }
 

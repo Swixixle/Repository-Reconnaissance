@@ -9,13 +9,33 @@ let _queue: Queue | null = null;
 export const redisConnectionOptions = {
   maxRetriesPerRequest: null,
   enableReadyCheck: false,
+  /** Avoid eager TCP during module/init; errors surface on first command instead of crashing the process. */
+  lazyConnect: true,
+  retryStrategy(times: number) {
+    if (times > 10) return null;
+    return Math.min(times * 200, 3000);
+  },
 } as const;
+
+function attachRedisLogging(r: Redis, label: string) {
+  r.on("error", (err) => {
+    console.error(`[redis:${label}]`, err.message);
+  });
+}
 
 /** New ioredis instance per BullMQ component (Queue vs Worker). */
 export function createRedisConnection(): Redis | null {
-  const url = process.env.REDIS_URL;
+  const url = process.env.REDIS_URL?.trim();
+  if (process.env.DEBRIEF_USE_BULLMQ === "1" && !url) {
+    console.warn(
+      "[redis] DEBRIEF_USE_BULLMQ=1 but REDIS_URL is empty — analyzer queue disabled until Redis is configured.",
+    );
+    return null;
+  }
   if (!url || process.env.DEBRIEF_USE_BULLMQ !== "1") return null;
-  return new Redis(url, { ...redisConnectionOptions });
+  const r = new Redis(url, { ...redisConnectionOptions });
+  attachRedisLogging(r, "bullmq");
+  return r;
 }
 
 const defaultJobOptions = {
