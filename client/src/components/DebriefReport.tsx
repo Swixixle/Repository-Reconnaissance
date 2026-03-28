@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useProjectRuns } from "@/hooks/use-projects";
 import { HistoryAuthNudge } from "@/components/HistoryAuthNudge";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
+import { Hexagon } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
 const DEBRIEF_VERSION = "1.0";
@@ -633,6 +634,10 @@ export function DebriefReport({
 
   const operate = analysis.operate as any;
   const unknownsList = normalizeUnknowns(analysis.unknowns);
+  const runsQuery = useProjectRuns(projectId ?? 0);
+  const newestRunId = runsQuery.data?.[0]?.id ?? null;
+  const educationRunId = selectedRunId ?? newestRunId;
+
   const watchList = useMemo(() => {
     const claimItems = normalizeClaims(analysis.claims);
     const gapWatch = watchItemsFromOperateGaps(operate);
@@ -888,10 +893,30 @@ export function DebriefReport({
     </div>
   ) : null;
 
+  const educationCta =
+    projectId != null && educationRunId != null ? (
+      <div className="rounded-xl border border-teal-200 bg-linear-to-r from-teal-50 to-cyan-50 px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-xs">
+        <p className="text-sm text-teal-950 font-medium leading-snug">
+          Open Education Mode to see how this debrief run connects to Debrief&apos;s verified receipt chain in Postgres — the same checks auditors care about.
+        </p>
+        <Link href={`/education/${educationRunId}/chain`}>
+          <Button
+            type="button"
+            className="shrink-0 bg-teal-700 hover:bg-teal-800 text-white gap-2"
+            data-testid="education-chain-cta"
+          >
+            <Hexagon className="w-4 h-4" strokeWidth={2.25} aria-hidden />
+            See how this codebase is wired →
+          </Button>
+        </Link>
+      </div>
+    ) : null;
+
   if (!learnerMd) {
     return (
       <div className="max-w-4xl mx-auto space-y-4">
         {cacheBanner}
+        {educationCta}
         {historyBlock}
         {proArticle}
       </div>
@@ -903,6 +928,7 @@ export function DebriefReport({
   return (
     <div className="max-w-4xl mx-auto space-y-4">
       {cacheBanner}
+      {educationCta}
       {historyBlock}
       <Tabs defaultValue={defaultReportTab} className="w-full">
         <TabsList className="grid w-full max-w-md grid-cols-2 bg-amber-100/80 border border-amber-200/90 p-1 h-auto">

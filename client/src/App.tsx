@@ -16,6 +16,7 @@ import Billing from "@/pages/billing";
 import BillingSuccess from "@/pages/billing-success";
 import TargetsPage from "@/pages/targets";
 import TimelinePage from "@/pages/Timeline";
+import EvidenceChain from "@/pages/EvidenceChain";
 
 function Router() {
   return (
@@ -31,6 +32,7 @@ function Router() {
       <Route path="/billing" component={Billing} />
       <Route path="/targets" component={TargetsPage} />
       <Route path="/timeline/:targetId" component={TimelinePage} />
+      <Route path="/education/:runId/chain" component={EvidenceChain} />
       <Route component={NotFound} />
     </Switch>
   );

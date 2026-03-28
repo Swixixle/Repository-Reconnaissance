@@ -122,6 +122,89 @@
   box-shadow: 0 0 15px -3px hsla(var(--primary) / 0.3);
 }
 
+@keyframes edu-node-pulse {
+  0% {
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  45% {
+    filter: drop-shadow(0 0 14px color-mix(in srgb, var(--edu-green) 65%, transparent));
+  }
+  100% {
+    filter: drop-shadow(0 0 0 transparent);
+  }
+}
+
+@keyframes edu-ring-pulse-green {
+  0% {
+    opacity: 0.3;
+  }
+  55% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0.45;
+  }
+}
+
+@keyframes edu-ring-pulse-red {
+  0% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0.55;
+  }
+}
+
+@keyframes edu-gap-flash {
+  0% {
+    opacity: 1;
+    filter: brightness(1);
+  }
+  40% {
+    opacity: 0.85;
+    filter: brightness(1.35);
+  }
+  100% {
+    opacity: 1;
+    filter: brightness(1);
+  }
+}
+
+/** Education Mode — Receptionist panel loading strip */
+@keyframes edu-reception-line {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+
+/** Gap receipt — ongoing issue pulse (loops) */
+@keyframes edu-gap-pulse-loop {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+}
+
+@keyframes edu-edge-dash {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+
+.edu-edge-animated {
+  animation: edu-edge-dash 0.65s linear infinite;
+}
+
 @layer utilities {
   :root {
     --background: 224 71% 4%;
@@ -157,6 +240,18 @@
     --font-sans: 'Inter', sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
     --font-display: 'Space Grotesk', sans-serif;
+
+    /* Education Mode — cognitive grammar tokens */
+    --edu-green: #22c55e;
+    --edu-yellow: #eab308;
+    --edu-red: #ef4444;
+    --edu-blue: #3b82f6;
+    --edu-gray: #9ca3af;
+    --edu-frontend: #3b82f6;
+    --edu-backend: #22c55e;
+    --edu-data: #f59e0b;
+    --edu-config: #9ca3af;
+    --edu-worker: #a855f7;
   }
 
   /* Home / report shells: swap accent by mode (learner = warm amber, pro = muted cyan). */

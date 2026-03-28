@@ -1164,6 +1164,41 @@ export async function registerRoutes(
     res.json({ run, analysis });
   });
 
+  app.get("/api/runs/:runId/education/chain", async (req: Request, res: Response) => {
+    if (!projectApiRateLimiter()) {
+      return res.status(429).json({ error: "Rate limit exceeded" });
+    }
+    if (!requireAuth(req, res)) return;
+    const runId = Number(req.params.runId);
+    if (!Number.isFinite(runId)) {
+      return res.status(400).json({ message: "Invalid run id" });
+    }
+    const { getEducationChainModelForRun } = await import("./educationChainModel");
+    const model = await getEducationChainModelForRun(runId);
+    if (!model) {
+      return res.status(404).json({ message: "Run not found" });
+    }
+    res.json(model);
+  });
+
+  app.post("/api/education/receptionist", async (req: Request, res: Response) => {
+    if (!projectApiRateLimiter()) {
+      return res.status(429).json({ error: "Rate limit exceeded" });
+    }
+    if (!requireAuth(req, res)) return;
+    const { runReceptionist } = await import("./educationReceptionist");
+    const result = await runReceptionist(req.body);
+    if (!result.ok) {
+      const status = result.error === "OpenAI API key not configured" ? 503 : 400;
+      return res.status(status).json({ error: result.error || "bad_request" });
+    }
+    res.json({
+      text: result.text,
+      strategies: result.strategies,
+      cached: result.cached,
+    });
+  });
+
   app.post(
     "/api/ingest/audio",
     heavyLimiter,
