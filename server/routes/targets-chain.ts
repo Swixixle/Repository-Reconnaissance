@@ -15,6 +15,7 @@ import { sortKeysDeep, isChainFeatureEnabled } from "../chain/receiptCanonical";
 import { verifyChainRowsOrdered } from "../chain/verifyChainRows";
 import { finalizeAnalysisReceiptChain } from "../receiptChainFinalize";
 import { getSchedulerStatus } from "../scheduler";
+import { heavyLimiter } from "../middleware/rateLimiter";
 
 export type ChainRouteGuards = {
   requireAuth: (req: any, res: any) => boolean;
@@ -130,7 +131,7 @@ export function mountTargetChainRoutes(app: Express, g: ChainRouteGuards): void 
     res.json(rows);
   });
 
-  app.post("/api/targets", async (req: Request, res: Response) => {
+  app.post("/api/targets", heavyLimiter, async (req: Request, res: Response) => {
     if (!g.rateLimit()) return res.status(429).json({ error: "Rate limit exceeded" });
     if (!g.requireAuth(req, res)) return;
     if (!isChainFeatureEnabled()) {

@@ -4,6 +4,7 @@ import { getAuth, requireClerkSession } from "../middleware/clerk";
 import { db } from "../db";
 import { users } from "@shared/schema";
 import { BILLING_ACTIVE, getStripe, appOrigin, CREDIT_PACKS } from "./stripe";
+import { authLimiter } from "../middleware/rateLimiter";
 
 const billingRateOk = () => true;
 
@@ -56,7 +57,7 @@ export function mountBillingRoutes(app: Express): void {
     }
   });
 
-  app.post("/api/billing/checkout", requireClerkSession, async (req: Request, res: Response) => {
+  app.post("/api/billing/checkout", authLimiter, requireClerkSession, async (req: Request, res: Response) => {
     const stripe = getStripe();
     if (!stripe) {
       return res.status(503).json({ error: "Stripe is not configured" });

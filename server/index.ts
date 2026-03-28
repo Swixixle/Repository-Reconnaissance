@@ -19,6 +19,7 @@ import { handleStripeWebhook } from "./billing/webhook";
 import { apiKeyAuth } from "./middleware/apiKeyAuth";
 import { upsertUserMiddleware } from "./middleware/upsertUser";
 import { withClerk } from "./middleware/clerk";
+import { apiLimiter } from "./middleware/rateLimiter";
 
 // Load and validate configuration
 const config = getConfig();
@@ -202,6 +203,7 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  app.use("/api", apiLimiter);
   await registerRoutes(httpServer, app);
   initWebSocketServer(httpServer);
 

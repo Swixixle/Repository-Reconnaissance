@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { matchCloneAnalyzeUrl, normalizeHttpUrl } from "@shared/cloneAnalyzeUrl";
+import { isHostnameUnderRoot } from "@shared/urlHost";
 import { runGitClone } from "./git-clone";
 import { readGitMeta } from "./git-meta";
 import type { AnalysisMode, IngestInput, IngestManifestDisk, IngestResult } from "./types";
@@ -91,13 +92,13 @@ async function afterGitClone(
 export function hostedHttpsGitToIngestInput(rawUrl: string): IngestInput {
   const u = new URL(normalizeHttpUrl(rawUrl));
   const host = u.hostname.replace(/^www\./i, "").toLowerCase();
-  if (host === "github.com" || host.endsWith(".github.com")) {
+  if (isHostnameUnderRoot(host, "github.com")) {
     return { type: "github", url: u.href };
   }
-  if (host.endsWith("gitlab.com")) {
+  if (isHostnameUnderRoot(host, "gitlab.com")) {
     return { type: "gitlab", url: u.href };
   }
-  if (host === "bitbucket.org") {
+  if (isHostnameUnderRoot(host, "bitbucket.org")) {
     return { type: "bitbucket", url: u.href };
   }
   throw new Error(`Unsupported git host for ingest: ${host}`);
@@ -127,27 +128,29 @@ export async function ingest(input: IngestInput): Promise<IngestResult> {
     }
 
     case "github": {
-      parseGitRemote(input.url);
+      const u = parseGitRemote(input.url);
       const { dir: tmp, dispose } = await mkWorkDir("debrief-gh-");
       const dest = path.join(tmp, "repo");
-      await runGitClone(input.url, dest);
-      return afterGitClone(dest, input.type, "github", input.url, "full", [], dispose);
+      await runGitClone(u.href, dest);
+      return afterGitClone(dest, input.type, "github", u.href, "full", [], dispose);
     }
 
     case "gitlab":
     case "bitbucket": {
       const u = parseGitRemote(input.url);
-      const host = u.hostname.replace(/^www\./, "");
-      if (input.type === "gitlab" && !host.includes("gitlab")) {
-        throw new Error("GitLab ingest expects a gitlab.com (or GitLab host) https URL.");
+      const host = u.hostname.replace(/^www\./i, "").toLowerCase();
+      if (input.type === "gitlab" && !isHostnameUnderRoot(host, "gitlab.com")) {
+        throw new Error(
+          "GitLab ingest expects an https URL whose hostname is gitlab.com or a subdomain of gitlab.com.",
+        );
       }
-      if (input.type === "bitbucket" && !host.endsWith("bitbucket.org")) {
+      if (input.type === "bitbucket" && !isHostnameUnderRoot(host, "bitbucket.org")) {
         throw new Error("Bitbucket ingest expects a bitbucket.org https URL.");
       }
       const { dir: tmp, dispose } = await mkWorkDir(`debrief-${input.type}-`);
       const dest = path.join(tmp, "repo");
-      await runGitClone(input.url, dest);
-      return afterGitClone(dest, input.type, input.type, input.url, "full", [], dispose);
+      await runGitClone(u.href, dest);
+      return afterGitClone(dest, input.type, input.type, u.href, "full", [], dispose);
     }
 
     case "replit": {

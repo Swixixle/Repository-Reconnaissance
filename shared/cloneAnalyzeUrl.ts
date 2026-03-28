@@ -3,6 +3,8 @@
  * Extend with new matchers (GitLab, Bitbucket, etc.) without changing call sites.
  */
 
+import { isHostnameUnderRoot } from "./urlHost";
+
 export type CloneAnalyzeKind = "replit";
 
 export interface CloneAnalyzeMatch {
@@ -36,7 +38,7 @@ export function matchCloneAnalyzeUrl(raw: string): CloneAnalyzeMatch | null {
     return null;
   }
   const host = u.hostname.replace(/^www\./i, "").toLowerCase();
-  if (!host.endsWith("replit.com")) return null;
+  if (!isHostnameUnderRoot(host, "replit.com")) return null;
 
   const m = u.pathname.match(REPLIT_PATH);
   if (!m) return null;

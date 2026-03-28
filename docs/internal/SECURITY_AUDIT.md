@@ -45,6 +45,20 @@ Run: `.venv/bin/pip-audit` (or install `pip-audit` in the active environment).
 
 ---
 
+## CodeQL-oriented hardening (2026-03-28)
+
+Three recurring alert classes were addressed application-wide:
+
+1. **Missing rate limiting** — Added `express-rate-limit` with `server/middleware/rateLimiter.ts` (`apiLimiter`, `heavyLimiter`, `authLimiter`, and `spaFallbackLimiter` for the production SPA index fallback). `app.use("/api", apiLimiter)` in `server/index.ts` covers JSON API traffic; `heavyLimiter` is applied to analysis/ingest/queue-style routes; `authLimiter` to admin, API keys, and Stripe checkout. `/api/billing/webhook` and `/api/webhooks/github` are excluded from the global API limiter so bursty signed webhooks are not blocked. Vitest and `DISABLE_RATE_LIMITS=1` skip these limiters.
+
+2. **Incomplete URL host checks** — Replaced loose substring / `endsWith("foo.com")` checks with registrable-host rules in `shared/urlHost.ts` (`isHostnameUnderRoot`, etc.), used from `shared/cloneAnalyzeUrl.ts` and `server/ingestion/ingest.ts`, plus GitHub URL validation in `server/routes.ts`. Clone operations use the parsed canonical `URL.href` after validation.
+
+3. **Path traversal on ingest uploads** — Added `server/utils/pathSanitizer.ts` and `assertResolvedPathUnderBase` so multer `file.path` must resolve under the configured upload directory before ingest or transcription.
+
+Re-run CodeQL after merge to confirm alert clearance.
+
+---
+
 ## Review cadence
 
 - **npm:** weekly or on any dependency PR.

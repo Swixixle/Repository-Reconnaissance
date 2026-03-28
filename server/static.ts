@@ -1,6 +1,7 @@
 import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
+import { spaFallbackLimiter } from "./middleware/rateLimiter";
 
 /** Vite writes the client bundle to `<repo>/dist/public` (see client/vite.config.ts). */
 function resolveDistPublic(): string {
@@ -35,7 +36,7 @@ export function serveStatic(app: Express) {
 
   // SPA fallback: only after static has tried (and called next() if missing).
   // Avoid Express 5 `/{*path}` routing quirks that can intercept asset requests incorrectly.
-  app.use((req, res, next) => {
+  app.use(spaFallbackLimiter, (req, res, next) => {
     if (req.method !== "GET" && req.method !== "HEAD") {
       return next();
     }

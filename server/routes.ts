@@ -32,6 +32,9 @@ import type { Project } from "@shared/schema";
 import { mountBillingRoutes } from "./billing/routes";
 import { mountApiKeyRoutes } from "./routes/api-keys";
 import { apiV1Router } from "./routes/api-v1";
+import { heavyLimiter, authLimiter } from "./middleware/rateLimiter";
+import { assertResolvedPathUnderBase } from "./utils/pathSanitizer";
+import { isHostnameUnderRoot } from "@shared/urlHost";
 
 function logAdminEvent(event: string, detail?: Record<string, unknown>) {
   logEvent(0, event, detail);
@@ -356,7 +359,7 @@ export async function registerRoutes(
     res.json(projects);
   });
 
-  app.post(api.projects.create.path, async (req, res) => {
+  app.post(api.projects.create.path, heavyLimiter, async (req, res) => {
     if (!projectApiRateLimiter()) {
       return res.status(429).json({ error: "Rate limit exceeded" });
     }
@@ -458,7 +461,7 @@ export async function registerRoutes(
     res.json(analysis);
   });
 
-  app.post(api.projects.analyze.path, async (req, res) => {
+  app.post(api.projects.analyze.path, heavyLimiter, async (req, res) => {
     if (!projectApiRateLimiter()) {
       return res.status(429).json({ error: "Rate limit exceeded" });
     }
@@ -499,7 +502,7 @@ export async function registerRoutes(
     res.status(202).json({ message: "Analysis started" });
   });
 
-  app.post(api.projects.analyzeReplit.path, async (req, res) => {
+  app.post(api.projects.analyzeReplit.path, heavyLimiter, async (req, res) => {
     if (!projectApiRateLimiter()) {
       return res.status(429).json({ error: "Rate limit exceeded" });
     }
@@ -522,7 +525,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post(api.projects.cloneAnalyze.path, async (req, res) => {
+  app.post(api.projects.cloneAnalyze.path, heavyLimiter, async (req, res) => {
     if (!projectApiRateLimiter()) {
       return res.status(429).json({ error: "Rate limit exceeded" });
     }
@@ -571,7 +574,7 @@ export async function registerRoutes(
     res.type("text/markdown").send(readFileSync(p, "utf8"));
   });
 
-  app.get("/api/admin/analyzer-log", async (req, res) => {
+  app.get("/api/admin/analyzer-log", authLimiter, async (req, res) => {
     if (!requireDevAdmin(req, res)) return;
     try {
       if (!existsSync(LOG_FILE)) return res.json([]);
@@ -586,7 +589,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/admin/analyzer-log/clear", async (req, res) => {
+  app.post("/api/admin/analyzer-log/clear", authLimiter, async (req, res) => {
     if (!requireDevAdmin(req, res)) return;
     try {
       await fs.mkdir(LOG_DIR, { recursive: true });
@@ -603,7 +606,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/admin/reset-analyzer", async (req, res) => {
+  app.post("/api/admin/reset-analyzer", authLimiter, async (req, res) => {
     if (!requireDevAdmin(req, res)) return;
     try {
       await storage.resetAnalyzerLogbook();
@@ -958,7 +961,7 @@ export async function registerRoutes(
     res.json({ ok: true, run });
   });
 
-  app.post("/api/ci/enqueue", async (req: Request, res: Response) => {
+  app.post("/api/ci/enqueue", heavyLimiter, async (req: Request, res: Response) => {
     if (!ciApiRateLimiter()) {
       return res.status(429).json({ error: "Rate limit exceeded" });
     }
@@ -1026,12 +1029,13 @@ export async function registerRoutes(
     }
   });
 
+  const uploadIngestDir = path.join(os.tmpdir(), "debrief-upload");
   const uploadIngest = multer({
-    dest: path.join(os.tmpdir(), "debrief-upload"),
+    dest: uploadIngestDir,
     limits: { fileSize: 220 * 1024 * 1024 },
   });
 
-  app.post("/api/ingest/analyze", async (req: Request, res: Response) => {
+  app.post("/api/ingest/analyze", heavyLimiter, async (req: Request, res: Response) => {
     if (!projectApiRateLimiter()) {
       return res.status(429).json({ error: "Rate limit exceeded" });
     }
@@ -1074,6 +1078,7 @@ export async function registerRoutes(
 
   app.post(
     "/api/ingest/analyze-upload",
+    heavyLimiter,
     uploadIngest.single("file"),
     async (req: Request, res: Response) => {
       if (!projectApiRateLimiter()) {
@@ -1083,6 +1088,12 @@ export async function registerRoutes(
       const file = req.file;
       if (!file?.path) {
         return res.status(400).json({ message: "file required (multipart field: file)" });
+      }
+      try {
+        assertResolvedPathUnderBase(file.path, uploadIngestDir);
+      } catch {
+        await fs.unlink(file.path).catch(() => {});
+        return res.status(400).json({ message: "Invalid upload path" });
       }
       const kind = String(req.body?.kind || "");
       const name = typeof req.body?.name === "string" ? req.body.name : "Uploaded import";
@@ -1155,6 +1166,7 @@ export async function registerRoutes(
 
   app.post(
     "/api/ingest/audio",
+    heavyLimiter,
     uploadIngest.single("file"),
     async (req: Request, res: Response) => {
       if (!projectApiRateLimiter()) {
@@ -1164,6 +1176,12 @@ export async function registerRoutes(
       const file = req.file;
       if (!file?.path) {
         return res.status(400).json({ message: "file required (multipart field: file)" });
+      }
+      try {
+        assertResolvedPathUnderBase(file.path, uploadIngestDir);
+      } catch {
+        await fs.unlink(file.path).catch(() => {});
+        return res.status(400).json({ message: "Invalid upload path" });
       }
       try {
         const { transcribeAudio, sha256File } = await import("./ingestion/audio_ingest");
@@ -1326,8 +1344,8 @@ function isValidRepositoryUrl(url: string, mode: string): boolean {
     if (parsed.protocol !== "https:") {
       return false;
     }
-    // Only allow github.com domain
-    if (parsed.hostname !== "github.com") {
+    const ghHost = parsed.hostname.replace(/^www\./i, "").toLowerCase();
+    if (!isHostnameUnderRoot(ghHost, "github.com")) {
       return false;
     }
     // Validate format: https://github.com/owner/repo

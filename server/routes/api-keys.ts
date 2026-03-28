@@ -5,13 +5,14 @@ import { db } from "../db";
 import { apiKeys, users } from "@shared/schema";
 import { generateApiKey } from "../auth/api-keys";
 import { getAuth, requireClerkSession } from "../middleware/clerk";
+import { authLimiter } from "../middleware/rateLimiter";
 
 const bodySchema = z.object({
   label: z.string().min(1, "label is required").max(200),
 });
 
 export function mountApiKeyRoutes(app: Express): void {
-  app.post("/api/keys", requireClerkSession, async (req: Request, res: Response) => {
+  app.post("/api/keys", authLimiter, requireClerkSession, async (req: Request, res: Response) => {
     const parsed = bodySchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({ error: parsed.error.errors[0]?.message ?? "Invalid body" });
@@ -46,7 +47,7 @@ export function mountApiKeyRoutes(app: Express): void {
     res.json({ key, prefix, label });
   });
 
-  app.get("/api/keys", requireClerkSession, async (req: Request, res: Response) => {
+  app.get("/api/keys", authLimiter, requireClerkSession, async (req: Request, res: Response) => {
     const auth = getAuth(req);
     const clerkId = auth.userId!;
     const user = await db.query.users.findFirst({
@@ -68,7 +69,7 @@ export function mountApiKeyRoutes(app: Express): void {
     res.json(keys);
   });
 
-  app.delete("/api/keys/:id", requireClerkSession, async (req: Request, res: Response) => {
+  app.delete("/api/keys/:id", authLimiter, requireClerkSession, async (req: Request, res: Response) => {
     const auth = getAuth(req);
     const clerkId = auth.userId!;
     const user = await db.query.users.findFirst({
