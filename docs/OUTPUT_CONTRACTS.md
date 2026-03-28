@@ -1,6 +1,6 @@
 # Output Contracts
 
-This document describes the stable output contracts for PTA analyzer outputs, including JSON schemas and versioning strategy.
+This document describes the stable output contracts for **Debrief** analysis artifacts produced by the **PTA** (Proof Trust Anchor) evidence layer: JSON schemas, versioning, and related CLI output shapes.
 
 ## Overview
 
@@ -394,6 +394,245 @@ Schema evolution is driven by user needs. To propose changes:
 2. **Discuss**: Community feedback on impact
 3. **RFC**: Formal RFC for breaking changes
 4. **Implement**: PR with schema update, migration guide, tests
+
+---
+
+## Appendix: Coverage, verification CLI, and legacy monitor shapes
+
+The following sections document additional contracts and CLI behaviors used by the Node **`debrief`** CLI (`npm run debrief`; legacy npm script: `npm run reporecon`) and Python analyzer. They were consolidated from `output_contract.md` (removed as duplicate entry point).
+
+### coverage (`coverage_report_v1`) and `npm run debrief coverage`
+
+```
+debrief coverage <repo-path> --out <coverage.json> [--max-bytes N] [--exclude <glob>...]
+```
+
+#### `coverage_report_v1` JSON shape
+
+```
+{
+  "schema_version": "coverage_report_v1",
+  "repo_path": <string>,
+  "commit_sha": <string>,
+  "generated_at": <ISO datetime>,
+  "summary": {
+    "total_files": <integer>,
+    "analyzed_files": <integer>,
+    "skipped_files": <integer>,
+    "percent_coverage": <number>,
+    "statuses": { <FileCoverageStatus>: <integer> },
+    "skipped_reasons": { <CoverageReason>: <integer> },
+    "directories": [
+      {
+        "path": <string>,
+        "total_files": <integer>,
+        "analyzed_files": <integer>,
+        "skipped_files": <integer>,
+        "percent_coverage": <number>
+      }
+    ],
+    "files": [
+      {
+        "path": <string>,
+        "status": <FileCoverageStatus>,
+        "reason": <CoverageReason>,
+        "bytes": <integer>,
+        "language": <string>,
+        "analyzed_by": [<string>]
+      }
+    ]
+  }
+}
+```
+
+#### Dossier embedding
+
+```
+{
+  "coverage": {
+    "total_files": <integer>,
+    "analyzed_files": <integer>,
+    "skipped_files": <integer>,
+    "percent_coverage": <number>,
+    "statuses": { <FileCoverageStatus>: <integer> },
+    "skipped_reasons": { <CoverageReason>: <integer> },
+    "directories": [
+      {
+        "path": <string>,
+        "total_files": <integer>,
+        "analyzed_files": <integer>,
+        "skipped_files": <integer>,
+        "percent_coverage": <number>
+      }
+    ],
+    "coverage_report_ref": <string>
+  }
+}
+```
+
+#### UNKNOWN vs UNANALYZED
+
+- **UNKNOWN:** File was analyzed and found insufficient evidence for a claim.
+- **UNANALYZED:** File was not examined (skipped, unsupported, excluded, binary, too large, error).
+
+This distinction is explicit in `coverage.json` and the dossier coverage block.
+
+---
+
+### `verify-claim` CLI output
+
+#### Console output
+
+```
+Expected Hash: <expected_hash>
+Computed Hash: <computed_hash>
+Verdict: MATCH|MISMATCH
+Canonical Excerpt:
+<excerpt>  # up to 200 lines, else head/tail
+```
+
+#### Exit codes
+
+- `0` — MATCH
+- `2` — MISMATCH
+- `3` — ERROR (missing file, encoding, etc.)
+
+---
+
+### `audit_report.json` structure
+
+```
+{
+  "total_verified": <number>,
+  "valid": <number>,
+  "drifted": <number>,
+  "invalidated": <number>,
+  "commit_mismatch": <number>,
+  "canonicalization_mismatch": <number>,
+  "file_missing": <number>,
+  "encoding_error": <number>,
+  "drifted_claims": [
+    {
+      "claim_id": <string>,
+      "expected_hash": <string>,
+      "computed_hash": <string>,
+      "diff": {
+        "expected": <string>,
+        "actual": <string>
+      }
+    }
+  ]
+}
+```
+
+---
+
+### Contract change policy
+
+- Any change to these formats must be reviewed and versioned.
+- Scripts and downstream tools must be able to parse these outputs reliably.
+
+---
+
+### `drift_report.json` structure (monitor mode)
+
+```
+{
+  "baseline_commit": <string>,
+  "current_commit": <string>,
+  "time_delta_seconds": <integer>,
+  "verified": {
+    "still_valid": [<string>],
+    "drifted": [<string>],
+    "invalidated": [<string>],
+    "newly_verified": [<string>]
+  },
+  "unknown": {
+    "persisted_unknowns": [<string>],
+    "resolved_unknowns": [<string>],
+    "new_unknowns": [<string>]
+  },
+  "inferred_changes": [<string>],
+  "confidence_delta": <number>,
+  "risk_delta_score": <number>
+}
+```
+
+### Coverage section in dossier (legacy shape reference)
+
+```
+{
+  "coverage": {
+    "total_files": <integer>,
+    "analyzed_files": <integer>,
+    "skipped_files": [<string>],
+    "skipped_reasons": [<string>],
+    "percent_coverage": <number>,
+    "directories": [
+      {
+        "path": <string>,
+        "coverage_percent": <number>,
+        "analyzed_count": <integer>,
+        "skipped_count": <integer>
+      }
+    ]
+  }
+}
+```
+
+### `trust_score` section in dossier
+
+```
+{
+  "trust_score": {
+    "numeric_score": <integer>,
+    "grade": <string>,
+    "confidence_band": <string>
+  }
+}
+```
+
+### `checklist_findings` section in dossier
+
+```
+{
+  "checklist_findings": [
+    {
+      "category": <string>,
+      "status": "FOUND"|"ABSENT"|"UNKNOWN",
+      "evidence": <string>
+    }
+  ]
+}
+```
+
+### `portfolio_report.json` structure
+
+```
+{
+  "repos": [
+    {
+      "name": <string>,
+      "trust_score": <integer>,
+      "coverage_percent": <number>,
+      "critical_unknowns": <integer>
+    }
+  ],
+  "weakest_repo": <string>,
+  "strongest_repo": <string>,
+  "average_trust_score": <number>,
+  "risk_ranked_list": [<string>]
+}
+```
+
+### Workflow integration payloads
+
+- GitHub/Jira/Slack issue payloads:
+  - UNKNOWN → issue
+  - ABSENT security item → issue
+  - DRIFTED verified → alert
+- No external calls unless flag provided.
+- Mock tests verify payload structure.
 
 ---
 

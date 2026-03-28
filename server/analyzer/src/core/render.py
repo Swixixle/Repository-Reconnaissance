@@ -580,7 +580,7 @@ def render_onepager_cfo(
 
 def _render_engineer(pack: Dict[str, Any]) -> str:
     lines = [
-        f"# Program Totality Report — Engineer View",
+        f"# Debrief Report — Engineer View",
         f"",
         f"**EvidencePack Version:** {pack.get('evidence_pack_version', '?')}",
         f"**Tool Version:** {pack.get('tool_version', '?')}",
@@ -750,7 +750,7 @@ def _render_engineer(pack: Dict[str, Any]) -> str:
 
 def _render_auditor(pack: Dict[str, Any]) -> str:
     lines = [
-        f"# Program Totality Report — Auditor View",
+        f"# Debrief Report — Auditor View",
         f"",
         f"**EvidencePack Version:** {pack.get('evidence_pack_version', '?')}",
         f"**Generated:** {pack.get('generated_at', '?')}",
@@ -818,7 +818,7 @@ def _render_executive(pack: Dict[str, Any]) -> str:
     dci_v2 = _get_dci_v2(pack)
 
     lines = [
-        f"# Program Totality Report — Executive Summary",
+        f"# Debrief Report — Executive Summary",
         f"",
         f"**Generated:** {pack.get('generated_at', '?')}",
         f"",

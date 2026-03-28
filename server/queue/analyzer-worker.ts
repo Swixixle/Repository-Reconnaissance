@@ -14,6 +14,8 @@ import { progressMessage } from "./job-progress";
 import { broadcastJobProgress } from "../ws";
 import { refundCredits } from "../billing/credits";
 import type { IngestInput, IngestResult } from "../ingestion/types";
+import type { ChainContext } from "../receiptChainFinalize";
+import { finalizeAnalysisReceiptChain } from "../receiptChainFinalize";
 
 export type AnalyzerJobData = {
   projectId: number;
@@ -22,6 +24,7 @@ export type AnalyzerJobData = {
   model?: string;
   userId?: string | null;
   creditCost?: number;
+  chainContext?: ChainContext;
 };
 
 function sidecarFromIngestResult(p: IngestResult): AnalyzerIngestMeta {
@@ -44,7 +47,7 @@ export function createAnalyzerWorker(): Worker | null {
   const worker = new Worker<AnalyzerJobData>(
     "debrief-analyzer",
     async (job: Job<AnalyzerJobData>) => {
-      const { projectId, ingestInput, reportAudience, model } = job.data;
+      const { projectId, ingestInput, reportAudience, model, chainContext } = job.data;
 
       await job.updateProgress(5);
       await broadcastJobProgress(String(job.id), {
@@ -82,7 +85,7 @@ export function createAnalyzerWorker(): Worker | null {
         message: progressMessage(15),
       });
 
-      const { runDir } = await runProjectAnalysis({
+      const { runDir, insertedRunId } = await runProjectAnalysis({
         projectId,
         source: ingestResult.localPath,
         mode: "local",
@@ -91,12 +94,22 @@ export function createAnalyzerWorker(): Worker | null {
         skipCacheCheck: true,
         contentHashPrecomputed: contentHash,
         modelUsed: model,
+        chainContext,
         onProgress: async (pct, message) => {
           const p = 15 + Math.floor(Math.min(100, pct) * 0.75);
           await job.updateProgress(p);
           await broadcastJobProgress(String(job.id), { progress: p, message });
         },
       });
+
+      if (chainContext && insertedRunId != null) {
+        await finalizeAnalysisReceiptChain({
+          chainContext,
+          projectId,
+          newRunDir: runDir,
+          dbRunId: insertedRunId,
+        });
+      }
 
       await job.updateProgress(100);
       return { cached: false, runDir };

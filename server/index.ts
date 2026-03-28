@@ -10,6 +10,7 @@ process.on("unhandledRejection", (reason, promise) => {
 
 import express, { type Request, type Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
+import { startScheduler } from "./scheduler";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { getConfig, getBootReport } from "./config";
@@ -58,8 +59,17 @@ app.use(upsertUserMiddleware);
 // CORS Configuration - secure cross-origin requests
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [];
-  
+  const rawOrigins = process.env.ALLOWED_ORIGINS?.trim() ?? "";
+  const allowedOrigins = rawOrigins
+    ? rawOrigins.split(",").map((o) => o.trim()).filter(Boolean)
+    : [];
+
+  if (process.env.NODE_ENV === "production" && !rawOrigins) {
+    console.warn(
+      "[SECURITY] ALLOWED_ORIGINS is not set in production. CORS will block all cross-origin requests. Set ALLOWED_ORIGINS in your environment.",
+    );
+  }
+
   // In production, only allow explicitly listed origins
   if (process.env.NODE_ENV === "production") {
     if (origin && allowedOrigins.includes(origin)) {
@@ -252,5 +262,12 @@ app.use((req, res, next) => {
   httpServer.listen(port, host, () => {
     log(`serving on ${host}:${port}`);
     log(JSON.stringify(getBootReport(config)));
+    setTimeout(() => {
+      try {
+        startScheduler();
+      } catch (e) {
+        console.error("[scheduler] failed to start:", e);
+      }
+    }, 2000);
   });
 })();

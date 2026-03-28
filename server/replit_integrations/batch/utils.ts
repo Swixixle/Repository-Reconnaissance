@@ -1,3 +1,7 @@
+// STUB: Replit batch utilities — see ../batch/index.ts.
+// Planned: Parallel OpenAI batch calls with backoff on Replit.
+// Status: Not production-ready. Do not expose to users without review.
+
 import pLimit from "p-limit";
 import pRetry from "p-retry";
 

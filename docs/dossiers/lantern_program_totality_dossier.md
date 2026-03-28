@@ -5,6 +5,8 @@ mode: deterministic+curated
 date: 2026-02-14
 ---
 
+> **Archival note (2026-03):** This dossier predates the public product rename. User-facing name is **Debrief**; the evidence layer remains **PTA (Proof Trust Anchor)**. Headings below are preserved as generated.
+
 # HALO-RECEIPTS: Program Totality Analyzer Dossier
 
 ---

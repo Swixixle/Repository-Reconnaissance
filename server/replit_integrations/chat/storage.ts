@@ -1,3 +1,7 @@
+// STUB: Replit chat storage — see ../chat/index.ts.
+// Planned: Persist conversations for Replit-hosted UI.
+// Status: Not production-ready. Do not expose to users without review.
+
 import { db } from "../../db";
 import { conversations, messages } from "@shared/schema";
 import { eq, desc } from "drizzle-orm";

@@ -1,7 +1,7 @@
-# Repo Recon Canonicalization Rules Spec v1
+# Debrief / PTA canonicalization rules spec v1
 
 ## Overview
-This document defines the normative, deterministic canonicalization process for excerpt hashing and claim verification in Repo Recon. All rules are specified with MUST/SHOULD language for implementation compliance.
+This document defines the normative, deterministic canonicalization process for excerpt hashing and claim verification in the **PTA** evidence layer. All rules are specified with MUST/SHOULD language for implementation compliance.
 
 ---
 

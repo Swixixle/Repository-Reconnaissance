@@ -11,7 +11,7 @@ from .core.adapter import load_evidence_pack
 from .core.render import render_report, save_report
 
 app = typer.Typer(
-    help="Program Totality Analyzer - Generate static-artifact-anchored technical dossiers for software projects.",
+    help="Debrief analyzer (PTA) — evidence-backed technical dossiers from repository artifacts.",
     add_completion=False,
 )
 
@@ -30,7 +30,7 @@ class ReportAudience(str, Enum):
 
 @app.callback(invoke_without_command=True)
 def main(ctx: typer.Context):
-    """Program Totality Analyzer CLI."""
+    """Debrief Python analyzer CLI (PTA evidence pipeline)."""
     if ctx.invoked_subcommand is None:
         typer.echo(ctx.get_help())
         raise typer.Exit(0)
@@ -57,6 +57,8 @@ def analyze(
     history_exclude: Optional[str] = typer.Option(None, "--history-exclude", help="Comma-separated globs to exclude"),
     demo: bool = typer.Option(False, "--demo", help="Generate demo mode outputs (DEMO_DOSSIER.md, DEMO_SUMMARY.json)"),
     model: str = typer.Option("gpt-4.1", "--model", "-M", help="OpenAI chat model id (e.g. gpt-4.1-mini)"),
+    target_id: Optional[str] = typer.Option(None, "--target-id", help="Scheduled target UUID for receipt chain (DEBRIEF_CHAIN_ENABLED)"),
+    scheduled: bool = typer.Option(False, "--scheduled", help="Mark receipt as scheduler-triggered"),
 ):
     """
     Analyze a software project and generate a dossier.
@@ -106,6 +108,8 @@ def analyze(
             render_mode=mode.value,
             llm_model=model,
             report_audience=report_audience.value,
+            target_id=target_id,
+            scheduled=scheduled,
         )
         asyncio.run(analyzer.run(
             include_history=include_history,
@@ -202,6 +206,51 @@ def render(
     content = render_report(pack, mode=mode.value)
     report_path = save_report(content, out, mode.value)
     console.print(f"[bold green]Report rendered![/bold green] {report_path}")
+
+
+@app.command("verify-chain")
+def verify_chain(
+    target_id: str = typer.Argument(..., help="Target id (PTA_CHAIN_STATE_DIR/<id>)"),
+    json_out: bool = typer.Option(False, "--json", help="Emit JSON report on stdout"),
+):
+    """Verify hash chain continuity, sequence, and signatures for a target."""
+    from .receipt_chain import chain_state_dir, verify_chain_for_target, print_verify_report
+
+    report = verify_chain_for_target(chain_state_dir(), target_id)
+    if json_out:
+        typer.echo(json.dumps(report.to_dict(), indent=2))
+        raise typer.Exit(0 if report.intact else 1)
+    print_verify_report(report)
+    raise typer.Exit(0 if report.intact else 1)
+
+
+@app.command("record-gap")
+def record_gap(
+    target_id: str = typer.Option(..., "--target-id", help="Scheduled target UUID"),
+    output_dir: str = typer.Option(..., "--output-dir", "-o", help="Directory for receipt.json"),
+    gap_start: str = typer.Option(..., "--gap-start", help="ISO timestamp of last successful receipt"),
+    gap_end: str = typer.Option(..., "--gap-end", help="ISO timestamp when gap was detected"),
+    scheduled: bool = typer.Option(True, "--scheduled/--no-scheduled"),
+    run_id: Optional[str] = typer.Option(None, "--run-id"),
+):
+    """Record a missed scheduled run as a signed gap receipt on the chain."""
+    import uuid
+    from pathlib import Path
+    from .receipt_chain import build_gap_receipt
+
+    console = Analyzer.get_console()
+    rid = run_id or f"gap-{uuid.uuid4()}"
+    rec = build_gap_receipt(
+        target_id,
+        gap_start_iso=gap_start,
+        gap_end_iso=gap_end,
+        scheduled=scheduled,
+        run_id=rid,
+    )
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "receipt.json").write_text(json.dumps(rec, indent=2, default=str), encoding="utf-8")
+    console.print(f"[green]Gap receipt[/green] {out / 'receipt.json'} seq={rec.get('chain_sequence')}")
 
 
 if __name__ == "__main__":

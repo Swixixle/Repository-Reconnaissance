@@ -1,6 +1,6 @@
-# Repo Recon Verification Workflow
+# Debrief verification workflow (PTA)
 
-This document describes the exact steps to verify a claim and audit a dossier using Repo Recon, ensuring deterministic reproducibility.
+This document describes how to verify a claim and audit a dossier using the **`debrief`** CLI (`npm run debrief`; legacy npm script: `npm run reporecon`), ensuring deterministic reproducibility.
 
 ---
 
@@ -15,12 +15,12 @@ This document describes the exact steps to verify a claim and audit a dossier us
 
 ### Command
 ```
-reporecon verify-claim <claim_id> --repo-path <path> [--dossier dossier.json]
+npm run debrief -- verify-claim <claim_id> --repo-path <path> [--dossier dossier.json]
 ```
 
 ### Example
 ```
-reporecon verify-claim C-1021 --repo-path ./myrepo --dossier ./dossier.json
+npm run debrief -- verify-claim C-1021 --repo-path ./myrepo --dossier ./dossier.json
 ```
 
 ### Output
@@ -40,12 +40,12 @@ reporecon verify-claim C-1021 --repo-path ./myrepo --dossier ./dossier.json
 
 ### Command
 ```
-reporecon audit dossier.json --repo-path <path>
+npm run debrief -- audit dossier.json --repo-path <path>
 ```
 
 ### Example
 ```
-reporecon audit ./dossier.json --repo-path ./myrepo
+npm run debrief -- audit ./dossier.json --repo-path ./myrepo
 ```
 
 ### Output
@@ -71,11 +71,11 @@ reporecon audit ./dossier.json --repo-path ./myrepo
 2. Place `dossier.json` in repo directory
 3. Run verification:
    ```
-   reporecon verify-claim C-1021 --repo-path .
+   npm run debrief -- verify-claim C-1021 --repo-path .
    ```
 4. Run audit:
    ```
-   reporecon audit dossier.json --repo-path .
+   npm run debrief -- audit dossier.json --repo-path .
    ```
 
 ---

@@ -1,9 +1,11 @@
 [project]
-name = "program-totality-analyzer"
+name = "debrief-analyzer"
 version = "0.1.0"
-description = "Evidence-bound static analysis tool that generates comprehensive technical dossiers for software projects"
+description = "AI-powered codebase analysis and cryptographic verification pipeline for Debrief"
+license = { text = "MIT" }
 requires-python = ">=3.11"
 dependencies = [
+    "cryptography>=43.0.0",
     "gitpython>=3.1.46",
     "jsonschema>=4.26.0",
     "openai>=2.21.0",
@@ -21,4 +23,10 @@ build-backend = "hatchling.build"
 packages = ["server"]
 
 [project.scripts]
+# Preferred CLI entry for the Python analyzer (maps to Typer `debrief` / analyze commands).
+debrief = "server.analyzer.src.analyzer_cli:app"
+# Deprecated: use `debrief` instead; kept for existing scripts and muscle memory.
 pta = "server.analyzer.src.analyzer_cli:app"
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-mock>=3.14"]

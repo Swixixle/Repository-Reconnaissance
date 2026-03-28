@@ -14,6 +14,8 @@ import {
 } from "./cache/run-cache";
 import { extractRunSummary } from "./runMetrics";
 import { logAnalyzerEvent as logEvent } from "./analyzerLog";
+import { isChainFeatureEnabled } from "./chain/receiptCanonical";
+import type { ChainContext } from "./receiptChainFinalize";
 
 const LEARNER_AUDIO_BANNER =
   "> **Note:** This analysis is based on your voice description, not source code. All claims are INFERRED until you connect a repository.\n\n";
@@ -105,11 +107,12 @@ export type RunProjectAnalysisOptions = {
   contentHashPrecomputed?: string;
   modelUsed?: string;
   onProgress?: (pct: number, message: string) => void | Promise<void>;
+  chainContext?: ChainContext;
 };
 
 export async function runProjectAnalysis(
   opts: RunProjectAnalysisOptions,
-): Promise<{ runDir: string; fromCache: boolean }> {
+): Promise<{ runDir: string; fromCache: boolean; insertedRunId?: number }> {
   const {
     projectId,
     source,
@@ -120,6 +123,7 @@ export async function runProjectAnalysis(
     contentHashPrecomputed,
     modelUsed,
     onProgress,
+    chainContext,
   } = opts;
 
   const emit = async (pct: number, msg: string) => {
@@ -174,7 +178,7 @@ export async function runProjectAnalysis(
           modelUsed,
         });
         await finishOnce("completed");
-        return { runDir: cached.runDir, fromCache: true };
+        return { runDir: cached.runDir, fromCache: true, insertedRunId: undefined };
       }
     } catch (err: any) {
       logEvent(projectId, "cache_lookup_failed", { error: String(err?.message || err) });
@@ -203,15 +207,26 @@ export async function runProjectAnalysis(
   if (reportAudience === "learner") {
     args.push("--mode", "learner");
   }
+  if (isChainFeatureEnabled() && chainContext?.scheduledTargetId) {
+    args.push("--target-id", chainContext.scheduledTargetId);
+    if (chainContext.scheduled) {
+      args.push("--scheduled");
+    }
+  }
 
   const cmd = `${pythonBin} ${args.join(" ")}`;
   console.log(`[Analyzer ${projectId}] Executing: ${cmd}`);
   logEvent(projectId, "spawn", { cmd });
 
-  const childEnv = {
+  const chainDir = path.resolve(process.cwd(), "out", "chain_state");
+  const childEnv: NodeJS.ProcessEnv = {
     ...process.env,
     ...(modelUsed ? { DEBRIEF_ANALYZER_MODEL: modelUsed } : {}),
   };
+  if (isChainFeatureEnabled() && chainContext?.scheduledTargetId) {
+    childEnv.PTA_CHAIN_STATE_DIR = process.env.PTA_CHAIN_STATE_DIR || chainDir;
+    childEnv.DEBRIEF_CHAIN_ENABLED = "true";
+  }
 
   const pythonProcess = spawn(pythonBin, args, {
     cwd: process.cwd(),
@@ -240,7 +255,7 @@ export async function runProjectAnalysis(
 
   try {
     await emit(20, "Reading files…");
-    const runDir = await new Promise<string>((resolve, reject) => {
+    const outcome = await new Promise<{ runDir: string; insertedRunId: number }>((resolve, reject) => {
       let settled = false;
       const end = (fn: () => void) => {
         if (settled) return;
@@ -413,7 +428,7 @@ export async function runProjectAnalysis(
             const hashForCache =
               contentHashKey ?? (await computeContentHash(analyzeTarget).catch(() => undefined));
 
-            await storage.insertRun({
+            const insertedRun = await storage.insertRun({
               projectId,
               mode: reportAudience,
               inputType: ingestMeta?.inputType ?? mode,
@@ -467,7 +482,7 @@ export async function runProjectAnalysis(
             }
 
             await finishOnce("completed");
-            end(() => resolve(resolvedRunDir));
+            end(() => resolve({ runDir: resolvedRunDir, insertedRunId: insertedRun.id }));
           } catch (err: any) {
             console.error(`[Analyzer ${projectId}] Error saving results:`, err);
             logEvent(projectId, "save_error", { error: String(err) });
@@ -484,7 +499,11 @@ export async function runProjectAnalysis(
     });
 
     await emit(95, "Done");
-    return { runDir, fromCache: false };
+    return {
+      runDir: outcome.runDir,
+      fromCache: false,
+      insertedRunId: outcome.insertedRunId,
+    };
   } catch (e) {
     await releaseIngestTemp();
     throw e;

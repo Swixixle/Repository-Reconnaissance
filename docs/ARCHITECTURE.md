@@ -1,15 +1,23 @@
 
 # Architecture
 
+Last updated: 2026-03-28
 
 ## Documentation Links
 
 - [API](API.md): Endpoint contracts and authentication model
 - [Data Model](DATA_MODEL.md): Database schema
+- [Runbook](RUNBOOK.md): Operations, health checks, common failures
 
 ## Code Pointers
-- Node server routes: [server/routes.ts](server/routes.ts)
-- Python analyzer orchestration: [runAnalysis](server/routes.ts) spawns [server/analyzer/analyzer_cli.py](server/analyzer/analyzer_cli.py)
+- Node server routes: [server/routes.ts](../server/routes.ts); chain/target routes: [server/routes/targets-chain.ts](../server/routes/targets-chain.ts)
+- Scheduler: [server/scheduler.ts](../server/scheduler.ts); receipt finalize: [server/receiptChainFinalize.ts](../server/receiptChainFinalize.ts)
+- BullMQ queue: [server/queue/analyzer-queue.ts](../server/queue/analyzer-queue.ts); worker: [server/queue/analyzer-worker.ts](../server/queue/analyzer-worker.ts); standalone worker entry: [server/analyzer-worker-entry.ts](../server/analyzer-worker-entry.ts)
+- Analysis orchestration: [server/runProjectAnalysis.ts](../server/runProjectAnalysis.ts)
+- Python CLI: [server/analyzer/analyzer_cli.py](../server/analyzer/analyzer_cli.py) (re-exports [server/analyzer/src/analyzer_cli.py](../server/analyzer/src/analyzer_cli.py)); core analyzer: [server/analyzer/src/analyzer.py](../server/analyzer/src/analyzer.py)
+- Drizzle schema (incl. chain tables): [shared/schema.ts](../shared/schema.ts)
+- React routes: [client/src/App.tsx](../client/src/App.tsx); targets UI: [client/src/pages/targets.tsx](../client/src/pages/targets.tsx); timeline: [client/src/pages/Timeline.tsx](../client/src/pages/Timeline.tsx)
+- Desktop: [client/src-tauri/tauri.conf.json](../client/src-tauri/tauri.conf.json)
 
 ## High-Level Components
 
@@ -33,6 +41,27 @@ GitHub Webhook ──► Express API ──► ci_runs / ci_jobs (PostgreSQL)
 
 React UI (/ci) ◄── polls ──► GET /api/ci/runs
 ```
+
+### Product analysis path + evidence chain (BullMQ)
+
+When **Redis** is configured and **`DEBRIEF_USE_BULLMQ=1`**, interactive analysis and scheduler-driven runs typically enqueue jobs on queue **`debrief-analyzer`** instead of blocking the API process:
+
+```
+React UI / API POST ──► Queue (BullMQ / Redis) ──► Worker (analyzer-worker)
+                                │                         │
+                                │                         ├── ingest (clone / unzip)
+                                │                         ├── runProjectAnalysis → Python analyzer_cli
+                                │                         └── finalizeAnalysisReceiptChain (DB + alerts)
+                                ▼
+                     PostgreSQL: projects, runs, analyses,
+                                scheduled_targets, receipt_chain
+```
+
+- **Scheduler** (`DEBRIEF_SCHEDULER_ENABLED=true`, `DEBRIEF_CHAIN_ENABLED`): **node-cron** loads active rows from **`scheduled_targets`**, may record a **gap** via Python `record-gap`, then **enqueues** a job with `chainContext` (`triggeredBy: "scheduler"`).
+- **Filesystem receipts** (Python): canonical JSON + optional **HMAC / Ed25519** signatures under `PTA_CHAIN_STATE_DIR` (default `out/chain_state`).
+- **Database mirror**: **`receipt_chain`** rows store hashes, sequence, diff/CVE/auth deltas, anomaly flags; **`GET /api/targets/:id/chain/verify`** checks ordering/consistency.
+
+Without BullMQ (`DEBRIEF_USE_BULLMQ` unset or no `REDIS_URL`), the queue wrapper returns null and analysis uses synchronous paths in the API process (see `useQueueForAnalyzer` call sites).
 
 ## Components
 
@@ -154,6 +183,22 @@ Tables relevant to CI feed:
 | `repo_owner` | text | Repository owner (nullable) |
 | `repo_name` | text | Repository name (nullable) |
 | `received_at` | timestamp | When the webhook was first received |
+
+### Time-based evidence trail (`shared/schema.ts`)
+
+**`scheduled_targets`** — one row per registered repo/interval for the evidence trail: `repo_url`, `interval` (`three_daily` \| `daily` \| `weekly` \| `manual`), `timezone`, `active`, `last_run_at`, `last_receipt_hash`, `chain_length`, optional `alert_email` / `alert_webhook`, link to `debrief_project_id`.
+
+**`receipt_chain`** — append-only ledger keyed by `target_id` → `scheduled_targets.id`: `chain_sequence`, `receipt_hash`, `previous_receipt_hash`, `receipt_type`, `scheduled`, `triggered_by`, `timestamp`, diff/CVE/endpoint/auth JSON blobs, `anomaly_flagged` / `anomaly_reason`, optional `receipt_document` snapshot. Indexed by `(target_id, chain_sequence)`.
+
+### Web UI: targets and timeline
+
+- **`/targets`** — list/create scheduled targets (`client/src/pages/targets.tsx`), backed by `GET/POST /api/targets` and related routes in `server/routes/targets-chain.ts`.
+- **`/timeline/:targetId`** — reads chain history for visualization (`client/src/pages/Timeline.tsx`), using chain APIs such as `GET /api/targets/:targetId/chain` and export/verify endpoints.
+
+### Desktop shell (Tauri 2)
+
+- **Config:** `client/src-tauri/tauri.conf.json` — `productName` **Debrief**, `devUrl` **http://localhost:5000**, `frontendDist` **`../../dist/public`**, `beforeBuildCommand` runs **`npm run build`** from repo root.
+- The desktop app is a **host window** around the same SPA; API calls target the running backend (local or remote depending on build/env). No separate analyzer binary in Tauri.
 
 ### Failure Modes
 

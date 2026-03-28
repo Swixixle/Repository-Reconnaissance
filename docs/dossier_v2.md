@@ -1,4 +1,4 @@
-# Repo Recon Dossier v2 Schema
+# Debrief dossier v2 schema (PTA)
 
 This document describes the structure and fields of Dossier v2, as specified in `shared/schemas/dossier_v2.schema.json`.
 
@@ -40,7 +40,7 @@ Each claim includes:
 ---
 
 ## Validation
-- Use `reporecon validate-dossier <dossier.json>` to validate against schema
+- Use `npm run debrief -- validate-dossier <dossier.json>` to validate against schema
 - Non-zero exit on failure
 
 ---

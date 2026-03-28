@@ -91,7 +91,7 @@ Run the included smoke test to validate analyzer functionality:
 ```bash
 npm run smoke
 # or
-bash scripts/smoke_pta.sh
+bash scripts/smoke_debrief.sh
 ```
 
 **Expected**: Green checkmarks for all outputs (operate.json, target_howto.json, etc.)

@@ -14,6 +14,8 @@ import CiFeed from "@/pages/ci-feed";
 import Settings from "@/pages/settings";
 import Billing from "@/pages/billing";
 import BillingSuccess from "@/pages/billing-success";
+import TargetsPage from "@/pages/targets";
+import TimelinePage from "@/pages/Timeline";
 
 function Router() {
   return (
@@ -27,6 +29,8 @@ function Router() {
       <Route path="/settings" component={Settings} />
       <Route path="/billing/success" component={BillingSuccess} />
       <Route path="/billing" component={Billing} />
+      <Route path="/targets" component={TargetsPage} />
+      <Route path="/timeline/:targetId" component={TimelinePage} />
       <Route component={NotFound} />
     </Switch>
   );

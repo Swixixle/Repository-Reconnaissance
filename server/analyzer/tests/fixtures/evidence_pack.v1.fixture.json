@@ -7,7 +7,7 @@
     "What the Target System Is": [
       {
         "id": "claim_001",
-        "statement": "The project is named \"rest-express\" (from package.json)",
+        "statement": "The project is named \"debrief\" (from package.json)",
         "section": "What the Target System Is",
         "evidence": [
           {
@@ -23,7 +23,7 @@
       },
       {
         "id": "claim_006",
-        "statement": "Python project named \"program-totality-analyzer\" (from pyproject.toml)",
+        "statement": "Python package named \"debrief-analyzer\" (from pyproject.toml)",
         "section": "What the Target System Is",
         "evidence": [
           {
@@ -57,7 +57,7 @@
       },
       {
         "id": "claim_003",
-        "statement": "npm script \"build\" runs: tsx script/build.ts",
+        "statement": "npm script \"build\" runs: tsx scripts/build.ts",
         "section": "How to Use the Target System",
         "evidence": [
           {

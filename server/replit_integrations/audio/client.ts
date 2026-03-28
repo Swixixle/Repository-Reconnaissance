@@ -1,3 +1,7 @@
+// STUB: Replit OpenAI audio client — see ../audio/index.ts.
+// Planned: Transcription and TTS helpers for Replit.
+// Status: Not production-ready. Do not expose to users without review.
+
 import OpenAI, { toFile } from "openai";
 import { Buffer } from "node:buffer";
 import { spawn } from "child_process";

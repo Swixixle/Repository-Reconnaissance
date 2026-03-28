@@ -13,9 +13,9 @@ Our projects focus on turning complex workflows and codebases into structured, d
 
 ## Systems
 
-**PTA (Program Totality Analyzer)**  
-Evidence-bound structural analysis for teams inheriting, auditing, or validating complex codebases.  
-[Demo on Replit](https://replit.com/github/Swixixle/Program-Totality-Analyzer)
+**Debrief**  
+Evidence-bound codebase analysis and verified briefs for teams inheriting, auditing, or validating complex systems. Internal receipt and chain layer: **PTA (Proof Trust Anchor)**.  
+*(Demo / hosting links depend on your deployment; see repository README.)*
 
 **HALO-RECEIPTS**  
 Cryptographically chained transcript verification for AI and workflow integrity.

@@ -3,7 +3,7 @@
 ## Usage
 
 ```sh
-npm run reporecon -- monitor <repo-path> --baseline <baseline_dossier.json> --out <drift_report.json>
+npm run debrief -- monitor <repo-path> --baseline <baseline_dossier.json> --out <drift_report.json>
 ```
 
 - `repo-path`: Path to local git repo
@@ -12,7 +12,7 @@ npm run reporecon -- monitor <repo-path> --baseline <baseline_dossier.json> --ou
 
 ## Output Contract
 
-See docs/output_contract.md for drift_report_v1 format.
+See `docs/OUTPUT_CONTRACTS.md` (appendix) for drift report shape reference.
 
 ## Example
 
@@ -23,13 +23,13 @@ See docs/output_contract.md for drift_report_v1 format.
 ### CLI Help Output
 
 ```
-npm run reporecon -- monitor --help
+npm run debrief -- monitor --help
 ```
 
 ### Worked Example
 
 ```sh
-npm run reporecon -- monitor tests/fixtures/monitor/repo --baseline tests/fixtures/monitor/baseline_dossier.json --out tests/fixtures/monitor/drift_report.json
+npm run debrief -- monitor tests/fixtures/monitor/repo --baseline tests/fixtures/monitor/baseline_dossier.json --out tests/fixtures/monitor/drift_report.json
 ```
 
 Produces drift_report.json with:

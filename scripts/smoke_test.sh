@@ -5,7 +5,7 @@ TMP="$(mktemp -d)"
 OUT="$TMP/out"
 trap 'rm -rf "$TMP"' EXIT
 
-echo "=== Smoke Test: Program Totality Analyzer ==="
+echo "=== Smoke Test: Debrief ==="
 
 echo "[1/6] pta --help"
 pta --help >/dev/null

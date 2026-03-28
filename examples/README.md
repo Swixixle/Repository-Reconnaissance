@@ -1,6 +1,6 @@
 # Example Outputs
 
-These are sample outputs from the Program Totality Analyzer running in `--no-llm` (deterministic) mode against its own workspace.
+These are sample outputs from **Debrief**’s Python analyzer (PTA) running in `--no-llm` (deterministic) mode against its own workspace.
 
 ## Files
 

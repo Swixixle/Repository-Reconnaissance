@@ -22,7 +22,7 @@ describe("monitorDrift", () => {
   let excerptHash: string;
 
   beforeAll(async () => {
-    tmp = await fs.mkdtemp(path.join(os.tmpdir(), "reporecon-monitor-"));
+    tmp = await fs.mkdtemp(path.join(os.tmpdir(), "debrief-monitor-"));
     repoPath = tmp;
     await fs.mkdir(path.join(repoPath, "src"), { recursive: true });
     await fs.writeFile(path.join(repoPath, fileRel), "console.log('A');\n");

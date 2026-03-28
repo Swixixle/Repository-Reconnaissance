@@ -14,6 +14,8 @@ attached_assets/
 
 # Python
 __pycache__/
+*.py[cod]
+*$py.class
 *.pyc
 *.pyo
 *.pyd
@@ -29,6 +31,8 @@ build/
 
 # Node
 node_modules/
+# Legacy local CLI shim (active entry is server/cli.ts via ts-node)
+server/cli.js
 dist/
 # Bundled GitHub Action (see .github/debrief-action)
 !/.github/debrief-action/dist/

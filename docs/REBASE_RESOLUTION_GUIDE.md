@@ -143,7 +143,7 @@ If nano or vim opens for a commit message:
 
 ## Verification Report
 
-After resolving rebase issues, refer to `REBASE_VERIFICATION_REPORT.md` for:
+After resolving rebase issues, refer to `docs/internal/process/REBASE_VERIFICATION_REPORT.md` for:
 - Detailed verification steps
 - Expected outputs for each command
 - Health endpoint testing procedures
@@ -270,7 +270,7 @@ If you encounter a complex rebase situation:
 
 - [Git Rebase Documentation](https://git-scm.com/docs/git-rebase)
 - [Atlassian Git Rebase Tutorial](https://www.atlassian.com/git/tutorials/rewriting-history/git-rebase)
-- Repository-specific: `REBASE_VERIFICATION_REPORT.md`
+- Repository-specific: `docs/internal/process/REBASE_VERIFICATION_REPORT.md`
 
 ## Script Reference
 

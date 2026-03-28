@@ -1,3 +1,7 @@
+// STUB: Replit audio routes — see ../audio/index.ts.
+// Planned: Multipart/audio endpoints for Replit-hosted demos.
+// Status: Not production-ready. Do not expose to users without review.
+
 import express, { type Express, type Request, type Response } from "express";
 import { chatStorage } from "../chat/storage";
 import { openai, speechToText, ensureCompatibleFormat } from "./client";

@@ -123,6 +123,13 @@ from .core.render import render_report, save_report, assert_pack_written
 from .core.operate import build_operate, validate_operate
 from .version import PTA_VERSION, OPERATE_SCHEMA_VERSION, TARGET_HOWTO_SCHEMA_VERSION
 from .schema_validator import validate_operate_json, validate_target_howto_json
+from .receipt_chain import (
+    chain_state_dir,
+    load_latest_receipt,
+    persist_receipt_to_chain_state,
+    receipt_document_hash,
+    sign_receipt,
+)
 
 load_dotenv()
 
@@ -147,6 +154,10 @@ class Analyzer:
         render_mode: str = "engineer",
         llm_model: Optional[str] = None,
         report_audience: str = "pro",
+        target_id: Optional[str] = None,
+        scheduled: bool = False,
+        receipt_type: str = "analysis",
+        chain_enabled: Optional[bool] = None,
     ):
         self.source = source
         self.mode = mode
@@ -174,6 +185,16 @@ class Analyzer:
         self.no_llm = no_llm
         self.render_mode = render_mode
         self._api_surface_result: Optional[Dict[str, Any]] = None
+        self.target_id = (target_id or "").strip() or None
+        self.scheduled = bool(scheduled)
+        self.receipt_type = receipt_type if receipt_type in ("analysis", "gap") else "analysis"
+        if chain_enabled is None:
+            chain_enabled = os.environ.get("DEBRIEF_CHAIN_ENABLED", "true").lower() in (
+                "1",
+                "true",
+                "yes",
+            )
+        self.chain_enabled = bool(chain_enabled)
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1055,7 +1076,7 @@ RULES:
         if not self.client:
             return ""
         base_rules = (
-            "You are the 'Program Totality Analyzer'. Output ONLY Markdown for this turn — no preamble.\n"
+            "You are the Debrief analysis engine. Output ONLY Markdown for this turn — no preamble.\n"
             "SCOPE: Static source artifacts only; you do not observe runtime behavior.\n"
             "Substantive claims must cite evidence as (path:line) from the target project.\n"
             "Use epistemic labels where appropriate: VERIFIED, INFERRED, or UNKNOWN.\n"
@@ -1085,7 +1106,7 @@ RULES:
         api_surface: Optional[Dict[str, Any]] = None,
     ) -> tuple[str, Dict[str, Any]]:
         if not self.client:
-            return "# Program Totality Dossier\n\n_(LLM client not configured.)_\n", {"claims": [], "error": "no_llm"}
+            return "# Debrief Dossier\n\n_(LLM client not configured.)_\n", {"claims": [], "error": "no_llm"}
 
         howto_str = json.dumps(howto, indent=2, default=str)
         if len(howto_str) > 42000:
@@ -1179,7 +1200,7 @@ RULES:
             max_completion_tokens=4096,
         )
 
-        dossier = f"# Program Totality Dossier\n\n{body}\n\n{sec12}"
+        dossier = f"# Debrief Dossier\n\n{body}\n\n{sec12}"
 
         try:
             claims = await self._extract_claims(dossier, packs)
@@ -1344,7 +1365,7 @@ RULES:
         dossier_main_sha256: str,
     ) -> None:
         ts = datetime.now(timezone.utc).isoformat()
-        sig_b64 = os.environ.get("PTA_DOSSIER_SIGNATURE", "").strip() or None
+        legacy_sig = os.environ.get("PTA_DOSSIER_SIGNATURE", "").strip() or None
         fp = os.environ.get("PTA_SIGNING_KEY_FINGERPRINT", "").strip() or None
         rec: Dict[str, Any] = {
             "schema_version": "1.0",
@@ -1356,9 +1377,6 @@ RULES:
             "model": None if self.no_llm else self.llm_model,
             "repo_mode": self.mode,
             "repo_source_redacted": self._redact_repo_source_for_receipt(),
-            "signed": bool(sig_b64),
-            "signature": sig_b64,
-            "signing_key_fingerprint": fp if sig_b64 else None,
             "artifacts": [
                 "DOSSIER.md",
                 "ONEPAGER.md",
@@ -1374,9 +1392,39 @@ RULES:
             "note": "Retention-grade record for compliance or M&A due diligence. "
             "Verify dossier_file_sha256 against the on-disk DOSSIER.md bytes.",
         }
+
+        use_chain = self.chain_enabled and self.target_id and self.receipt_type == "analysis"
+        if use_chain:
+            state = chain_state_dir()
+            prior = load_latest_receipt(state, self.target_id)
+            rec["receipt_type"] = "analysis"
+            if prior is None:
+                rec["previous_receipt_hash"] = None
+                rec["chain_sequence"] = 0
+                rec["chain_genesis"] = True
+                rec["scheduled"] = self.scheduled
+            else:
+                rec["previous_receipt_hash"] = receipt_document_hash(prior)
+                rec["chain_sequence"] = int(prior.get("chain_sequence", -1)) + 1
+                rec["scheduled"] = self.scheduled
+            chain_sig, chain_alg = sign_receipt(rec)
+            rec["signature"] = chain_sig
+            rec["chain_signature_algorithm"] = chain_alg
+            rec["signed"] = bool(chain_sig)
+            rec["signing_key_fingerprint"] = fp if chain_sig else None
+            if legacy_sig and not chain_sig:
+                rec["legacy_pta_dossier_signature"] = legacy_sig
+        else:
+            rec["signed"] = bool(legacy_sig)
+            rec["signature"] = legacy_sig
+            rec["signing_key_fingerprint"] = fp if legacy_sig else None
+
         (run_dir / "receipt.json").write_text(
             json.dumps(rec, indent=2, default=str), encoding="utf-8"
         )
+
+        if use_chain and rec.get("chain_sequence") is not None:
+            persist_receipt_to_chain_state(chain_state_dir(), self.target_id, rec, int(rec["chain_sequence"]))
 
     async def _generate_onepager_executive(
         self,
@@ -1448,7 +1496,7 @@ Rules:
             f"{json.dumps(payload, default=str)[:14000]}\n\n"
             "Dossier excerpt for tone/context only (do not copy technical citations into output):\n"
             f"{dossier_excerpt[:5000]}\n\n"
-            "For 'How to get more': refer to the Program Totality Dossier and the engineer-facing structured report "
+            "For 'How to get more': refer to the Debrief dossier and the engineer-facing structured report "
             "by those plain titles — do not write .md filenames, paths, or URLs."
         )
         try:
@@ -1811,7 +1859,7 @@ Rules:
         return None
 
     def _build_deterministic_dossier(self, howto: dict) -> str:
-        lines = ["# Program Totality Analyzer — Deterministic Dossier", ""]
+        lines = ["# Debrief — Deterministic Dossier", ""]
         lines.append("**Mode:** `--no-llm` (deterministic extraction only, no LLM calls)")
         lines.append("")
 

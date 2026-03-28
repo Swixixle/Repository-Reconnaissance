@@ -1,3 +1,7 @@
+// STUB: Replit image routes — see ../image/index.ts.
+// Planned: Image generation endpoints for Replit.
+// Status: Not production-ready. Do not expose to users without review.
+
 import type { Express, Request, Response } from "express";
 import { openai } from "./client";
 

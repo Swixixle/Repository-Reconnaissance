@@ -2,9 +2,9 @@
 
 ## General
 
-### What is Program Totality Analyzer (PTA)?
+### What is Debrief / PTA?
 
-PTA is a static analysis system that generates operational documentation and readiness assessments for software projects. It analyzes source code, configuration files, and infrastructure-as-code to produce evidence-backed dossiers explaining what a system is, how to run it, what it needs, and what remains unknown.
+**Debrief** is the product: it reads a codebase and delivers a verified plain-language brief. **PTA** (Proof Trust Anchor) is the internal evidence layer — static analysis over source and config that produces audit-style dossiers (what the system is, how to run it, what it needs, and what remains unknown).
 
 ### Is this open source?
 
@@ -78,7 +78,7 @@ You can verify any claim by checking the cited file location and recomputing the
 1. **Explore capabilities** — read [PUBLIC.md](../PUBLIC.md) for overview
 2. **Review installation** — see [docs/QUICKSTART.md](QUICKSTART.md) for setup
 3. **Try CLI mode** — analyze a test repository locally
-4. **Request a demo** — contact us via [CONTACT.md](../CONTACT.md) for pilot access
+4. **Request a demo** — contact us via [CONTACT.md](internal/CONTACT.md) for pilot access
 
 ### Can I run PTA on private repositories?
 
@@ -147,7 +147,7 @@ For advanced customization (custom artifact types, specialized extraction), cont
 
 ### Is PTA free?
 
-This public documentation and evaluation CLI are available for non-commercial evaluation. Production deployment and commercial use require a license. Contact us via [CONTACT.md](../CONTACT.md) for pricing.
+This public documentation and evaluation CLI are available for non-commercial evaluation. Production deployment and commercial use require a license. Contact us via [CONTACT.md](internal/CONTACT.md) for pricing.
 
 ### What's included in a pilot program?
 
@@ -176,7 +176,7 @@ If you encounter issues:
 
 1. Check [docs/QUICKSTART.md](QUICKSTART.md) troubleshooting section
 2. Review [docs/OPERATIONS.md](OPERATIONS.md) for common issues
-3. For persistent issues, contact us via [CONTACT.md](../CONTACT.md) with:
+3. For persistent issues, contact us via [CONTACT.md](internal/CONTACT.md) with:
    - Error message and logs
    - Repository characteristics (language, size, structure)
    - PTA version and deployment environment
@@ -185,7 +185,7 @@ If you encounter issues:
 
 Feature requests are handled through the inquiry process:
 
-1. Send request to contact email in [CONTACT.md](../CONTACT.md)
+1. Send request to contact email in [CONTACT.md](internal/CONTACT.md)
 2. Include:
    - Use case description
    - Expected behavior

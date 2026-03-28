@@ -16,7 +16,7 @@ export function Layout({
   const isLight = variant === "light";
 
   useEffect(() => {
-    document.title = "Debrief";
+    document.title = "Debrief — Read any codebase. Get a verified plain-language brief.";
   }, []);
 
   return (
@@ -55,11 +55,11 @@ export function Layout({
               </span>
               <span
                 className={cn(
-                  "text-[10px] uppercase tracking-widest font-mono",
+                  "text-xs leading-snug max-w-[min(100%,24rem)] font-mono",
                   isLight ? "text-slate-500" : "text-muted-foreground",
                 )}
               >
-                Evidence-backed briefs
+                Read any codebase. Get a verified plain-language brief.
               </span>
             </div>
           </Link>
@@ -70,6 +70,9 @@ export function Layout({
             </NavLink>
             <NavLink href="/projects" active={location.startsWith("/projects")} isLight={isLight}>
               Archives
+            </NavLink>
+            <NavLink href="/targets" active={location.startsWith("/targets")} isLight={isLight}>
+              Targets
             </NavLink>
             <NavLink href="/ci" active={location.startsWith("/ci")} isLight={isLight}>
               CI Feed
@@ -116,7 +119,7 @@ export function Layout({
             {!isLight && " ONLINE"}
             {isLight && " — Ready"}
           </p>
-          <p>© 2025 Debrief. All rights reserved.</p>
+          <p>© 2026 Debrief. All rights reserved.</p>
         </div>
       </footer>
     </div>

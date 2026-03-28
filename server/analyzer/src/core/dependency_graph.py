@@ -409,6 +409,24 @@ def osv_query_batch(deps: List[Dep], timeout: float = 45.0) -> None:
                 dep.osv_ids = ids[:5]
 
 
+def cve_flag_records_from_deps(deps: List[Dep]) -> List[Dict[str, Any]]:
+    """Flatten OSV IDs on deps into tabular records (for reporting and tests)."""
+    rows: List[Dict[str, Any]] = []
+    for d in deps:
+        if not d.osv_ids:
+            continue
+        for vid in d.osv_ids:
+            rows.append(
+                {
+                    "package": d.name,
+                    "version": d.version,
+                    "cve_id": vid,
+                    "severity": "UNKNOWN",
+                }
+            )
+    return rows
+
+
 def build_dependency_graph(repo_dir: Path) -> Dict[str, Any]:
     deps, lockfiles = collect_dependencies(repo_dir)
     osv_query_batch(deps)

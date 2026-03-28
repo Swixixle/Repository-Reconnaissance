@@ -45,11 +45,11 @@
 - Dockerfile
 
 ## Known Gaps / Not Yet Implemented
-- Linter policy absent; see UNKNOWN_TABLE.md
-- Typecheck policy non-blocking; see UNKNOWN_TABLE.md
+- Linter policy absent; see `docs/internal/process/UNKNOWN_TABLE.md`
+- Typecheck policy non-blocking; see `docs/internal/process/UNKNOWN_TABLE.md`
 
 **Evidence:**
-- UNKNOWN_TABLE.md
+- `docs/internal/process/UNKNOWN_TABLE.md`
 # Production Readiness Implementation Summary
 
 This document summarizes the production readiness improvements made to Asset-Analyzer based on the technical review.

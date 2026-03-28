@@ -1,6 +1,6 @@
 # Security Model & Threat Analysis
 
-This document describes the security architecture, threat model, and execution boundary guarantees of the PTA (Program Totality Analyzer) system.
+This document describes the security architecture, threat model, and execution boundary guarantees of **Debrief** and its **PTA** (Proof Trust Anchor) evidence layer.
 
 ## Security Architecture
 

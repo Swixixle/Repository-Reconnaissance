@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 #
-# Smoke test for PTA - validates analyzer output contracts
+# Smoke test for Debrief (PTA analyzer) — validates analyzer output contracts
 #
 # This script:
-# 1. Runs analyzer on a tiny fixture repo
-# 2. Validates operate.json and target_howto.json using Python validator
+# 1. Runs the Python analyzer on a tiny fixture repo
+# 2. Validates operate.json and target_howto.json using the Python validator
 #
 
 set -euo pipefail
@@ -17,7 +17,7 @@ if [ ! -x "$PYTHON" ]; then
   PYTHON="python3"
 fi
 
-echo "==> PTA Smoke Test"
+echo "==> Debrief analyzer smoke test"
 echo
 
 # Colors for output
@@ -113,4 +113,3 @@ echo "  - $RUN_DIR/target_howto.json"
 echo
 
 exit 0
-

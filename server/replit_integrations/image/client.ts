@@ -1,3 +1,7 @@
+// STUB: Replit image OpenAI client — see ../image/index.ts.
+// Planned: Image generation for Replit.
+// Status: Not production-ready. Do not expose to users without review.
+
 import fs from "node:fs";
 import OpenAI, { toFile } from "openai";
 import { Buffer } from "node:buffer";

@@ -20,7 +20,7 @@ This repository does **not** disclose:
 
 **This repository does not constitute an open-source release of the core intellectual property.**
 
-The Program Totality Analyzer's public documentation is provided to:
+Debrief’s public documentation is provided to:
 
 * Help potential users understand capabilities and value propositions
 * Enable integration planning and technical evaluation
@@ -38,7 +38,7 @@ The documentation and code samples provided here do not grant rights to:
 
 If you discover a security vulnerability in:
 
-* **Public-facing APIs or webhooks** — report to the contact email in CONTACT.md with subject line: `[SECURITY] Vulnerability Report`
+* **Public-facing APIs or webhooks** — report to the contact email in `docs/internal/CONTACT.md` with subject line: `[SECURITY] Vulnerability Report`
 * **Documentation that inadvertently exposes sensitive implementation details** — report using the same process
 
 Include:
@@ -95,7 +95,7 @@ When providing examples or sample outputs:
 If you're unsure whether something should be publicly shared:
 
 * **Default to not sharing** — if it feels like internal IP, it probably is
-* **Ask first** — contact us at the email in CONTACT.md before posting or sharing
+* **Ask first** — contact us at the email in `docs/internal/CONTACT.md` before posting or sharing
 * **Check this policy** — review the "What we protect" vs "What we share" sections above
 
 ## Updates to this policy

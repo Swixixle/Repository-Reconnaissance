@@ -1,6 +1,6 @@
 # Market context
 
-Strategic framing for Program Totality Analyzer / Debrief: who it serves, the wedge, and adjacent opportunities.
+Strategic framing for **Debrief** (product) and **PTA** (internal evidence layer): who it serves, the wedge, and adjacent opportunities.
 
 ---
 

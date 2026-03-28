@@ -1,5 +1,7 @@
 # TypeScript Type Check Status
 
+Internal engineering note (not end-user documentation). See also `docs/internal/CLEANUP_LOG.md` for repo maintenance history.
+
 ## Current State
 
 TypeScript type checking is configured but not currently enforcing in CI. This document tracks known issues and resolution plan.
@@ -46,7 +48,7 @@ Continue with current setup but document known issues:
 // In package.json
 {
   "scripts": {
-    "check": "tsc || echo 'WARNING: Type errors exist. See TYPECHECK_TODO.md'"
+    "check": "tsc || echo 'WARNING: Type errors exist. See docs/internal/TYPECHECK_TODO.md'"
   }
 }
 ```
@@ -102,5 +104,5 @@ Once the codebase is cleaner:
 ## See Also
 
 - [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html)
-- [tsconfig.json](../tsconfig.json)
-- [CI Configuration](./.github/workflows/)
+- [tsconfig.json](../../tsconfig.json)
+- [CI Configuration](../../.github/workflows/)

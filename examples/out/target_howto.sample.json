@@ -271,11 +271,11 @@
       "health_endpoint": true,
       "evidence": [
         {
-          "path": "script/build.ts",
+          "path": "scripts/build.ts",
           "line_start": 38,
           "line_end": 38,
           "snippet_hash": "2f74cc3fdab1",
-          "display": "script/build.ts:38"
+          "display": "scripts/build.ts:38"
         },
         {
           "path": "shared/schema.ts",

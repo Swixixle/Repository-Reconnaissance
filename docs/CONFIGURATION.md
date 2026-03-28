@@ -1,6 +1,6 @@
 # Configuration Guide
 
-This document describes all configuration options for the PTA (Program Totality Analyzer) system.
+This document describes configuration options for the **Debrief** web app and API, the Python **PTA** analyzer, and related services.
 
 ## Environment Variable Precedence
 

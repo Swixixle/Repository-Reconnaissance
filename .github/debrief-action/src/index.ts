@@ -1,3 +1,7 @@
+// PARTIAL: GitHub Action — posts to a configurable Debrief API (`api.debrief.app` in this template).
+// Planned: PR comments, status checks, org-specific base URLs via inputs.
+// Status: Requires secrets, correct API host, and API compatibility review before production use.
+
 import * as core from "@actions/core";
 import * as github from "@actions/github";
 

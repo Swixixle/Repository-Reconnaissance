@@ -28,7 +28,7 @@ The profile overview positions your GitHub presence as:
 
 ### Systems Covered
 
-* **PTA (Program Totality Analyzer)** — This repository ([Demo on Replit](https://replit.com/github/Swixixle/Program-Totality-Analyzer))
+* **Debrief** — This repository (evidence layer: **PTA / Proof Trust Anchor**). Update any external demo badges to match your published host.
 * **HALO-RECEIPTS** — Cryptographic transcript verification
 * **ELI Imaging** — Clinical documentation artifacts
 * **Lantern** — Operational visibility systems ([Demo on Replit](https://replit.com/github/Swixixle/Lantern))

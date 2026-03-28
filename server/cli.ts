@@ -1,5 +1,3 @@
-console.error("[cli.ts] loaded");
-
 import yargsFactory from "yargs/yargs";
 import { hideBin } from "yargs/helpers";
 
@@ -11,7 +9,7 @@ import { registerCoverage } from "./coverage"; // MUST exist
 
 export function main(argv = process.argv) {
   const y = yargsFactory(hideBin(argv))
-    .scriptName("reporecon")
+    .scriptName("debrief")
     .strict()
     .recommendCommands()
     .help()
@@ -23,7 +21,6 @@ export function main(argv = process.argv) {
   registerMonitor(y);
   registerCoverage(y);
 
-    return y.parse();
   return y.parse();
 }
 

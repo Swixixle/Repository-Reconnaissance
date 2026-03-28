@@ -1,12 +1,12 @@
 # Overview
 
-**Program Totality Analyzer** — a full-stack web application that ingests software projects (via GitHub URL, local path, or live Replit workspace) and produces evidence-cited technical dossiers. The dossier covers what a target system is, how it works, how to use it, and what risks/unknowns exist. It combines a React frontend for submitting analysis requests and viewing results with an Express backend that manages projects/analyses in PostgreSQL and spawns a Python-based analyzer CLI for the actual code analysis.
+**Debrief** — a full-stack web application that ingests software projects (via GitHub URL, local path, or live Replit workspace) and produces evidence-cited technical dossiers. The dossier covers what a target system is, how it works, how to use it, and what risks/unknowns exist. It combines a React frontend for submitting analysis requests and viewing results with an Express backend that manages projects/analyses in PostgreSQL and spawns a Python-based analyzer CLI for the actual code analysis. The internal evidence/receipt layer is **PTA (Proof Trust Anchor)**.
 
 ## Replit Demo (1-click Portal)
 
-[![Run on Replit](https://replit.com/badge/github/Swixixle/Program-Totality-Analyzer)](https://replit.com/github/Swixixle/Program-Totality-Analyzer)
+[![Run on Replit](https://replit.com/badge/github/Swixixle/debrief)](https://replit.com/github/Swixixle/debrief)
 
-**Live Demo:** [Open Program Totality Analyzer in Replit](https://replit.com/github/Swixixle/Program-Totality-Analyzer)
+**Live Demo:** [Open Debrief on Replit](https://replit.com/github/Swixixle/debrief) *(update this URL if your published Replit app uses a different GitHub import path.)*
 
 ### Quick Start
 

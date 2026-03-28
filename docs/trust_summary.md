@@ -2,12 +2,12 @@
 
 **How to verify one claim:**
 ```
-reporecon verify-claim <claim_id> --repo-path <path>
+npm run debrief -- verify-claim <claim_id> --repo-path <path>
 ```
 
 **How to audit the dossier:**
 ```
-reporecon audit <dossier.json> --repo-path <path>
+npm run debrief -- audit <dossier.json> --repo-path <path>
 ```
 
 **What VERIFIED means:**

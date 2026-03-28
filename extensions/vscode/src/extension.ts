@@ -1,3 +1,7 @@
+// STUB: VS Code extension entry — minimal “open Debrief in browser” command.
+// Planned: Deeper workspace integration (local analyze, status).
+// Status: Not production-ready. Do not ship as supported product surface without roadmap.
+
 import * as vscode from "vscode";
 
 export function activate(context: vscode.ExtensionContext) {

@@ -6,7 +6,7 @@ Compare two dossier files to track longitudinal UNKNOWNs, commit changes, and tr
 ## Usage
 
 ```sh
-npm run reporecon -- diff-dossier --old <old_dossier.json> --new <new_dossier.json> [--out <output.json>]
+npm run debrief -- diff-dossier --old <old_dossier.json> --new <new_dossier.json> [--out <output.json>]
 ```
 
 - `--old`: Path to previous dossier file

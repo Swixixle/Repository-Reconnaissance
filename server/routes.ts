@@ -1232,6 +1232,13 @@ export async function registerRoutes(
     },
   );
 
+  const { mountTargetChainRoutes } = await import("./routes/targets-chain");
+  mountTargetChainRoutes(app, {
+    requireAuth,
+    requireDevAdmin,
+    rateLimit: projectApiRateLimiter,
+  });
+
   mountBillingRoutes(app);
   mountApiKeyRoutes(app);
   app.use("/api/v1", apiV1Router);

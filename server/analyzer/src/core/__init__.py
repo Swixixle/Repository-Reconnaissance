@@ -1,1 +1,1 @@
-# Core modules for the Program Totality Analyzer
+# Core modules for the Debrief Python analyzer (PTA / evidence pipeline internals).

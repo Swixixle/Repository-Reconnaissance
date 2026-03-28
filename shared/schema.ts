@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, timestamp, jsonb, index, uuid, real } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, jsonb, index, uuid, real, boolean } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -183,6 +183,51 @@ export const insertCiRunSchema = createInsertSchema(ciRuns).omit({ id: true, cre
 export const insertCiJobSchema = createInsertSchema(ciJobs).omit({ id: true, createdAt: true, attempts: true, leasedUntil: true, lastError: true });
 export const insertCertificateSchema = createInsertSchema(certificates).omit({ id: true, createdAt: true, issuedAt: true });
 
+/** Scheduled evidence-chain targets. After changes: `npm run db:push` with DATABASE_URL set. */
+export const scheduledTargets = pgTable("scheduled_targets", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  repoUrl: text("repo_url").notNull(),
+  repoName: text("repo_name"),
+  targetLabel: text("target_label"),
+  ownerId: text("owner_id"),
+  interval: text("interval").notNull().default("manual"),
+  timezone: text("timezone").notNull().default("UTC"),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  lastRunAt: timestamp("last_run_at"),
+  lastReceiptHash: text("last_receipt_hash"),
+  chainLength: integer("chain_length").notNull().default(0),
+  alertEmail: text("alert_email"),
+  alertWebhook: text("alert_webhook"),
+  debriefProjectId: integer("debrief_project_id"),
+});
+
+export const receiptChain = pgTable("receipt_chain", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  targetId: uuid("target_id")
+    .notNull()
+    .references(() => scheduledTargets.id),
+  runId: text("run_id").notNull(),
+  receiptHash: text("receipt_hash").notNull().unique(),
+  previousReceiptHash: text("previous_receipt_hash"),
+  chainSequence: integer("chain_sequence").notNull(),
+  receiptType: text("receipt_type").notNull(),
+  scheduled: boolean("scheduled").notNull().default(false),
+  triggeredBy: text("triggered_by").notNull().default("manual"),
+  timestamp: timestamp("timestamp").notNull(),
+  hasDiff: boolean("has_diff").notNull().default(false),
+  diffSummary: text("diff_summary"),
+  newCves: jsonb("new_cves").$type<unknown[]>().default(sql`'[]'::jsonb`),
+  closedCves: jsonb("closed_cves").$type<unknown[]>().default(sql`'[]'::jsonb`),
+  newEndpoints: jsonb("new_endpoints").$type<unknown[]>().default(sql`'[]'::jsonb`),
+  removedEndpoints: jsonb("removed_endpoints").$type<unknown[]>().default(sql`'[]'::jsonb`),
+  authChanges: jsonb("auth_changes").$type<unknown[]>().default(sql`'[]'::jsonb`),
+  anomalyFlagged: boolean("anomaly_flagged").notNull().default(false),
+  anomalyReason: text("anomaly_reason"),
+  receiptDocument: jsonb("receipt_document").$type<Record<string, unknown>>(),
+}, (table) => [index("receipt_chain_target_seq_idx").on(table.targetId, table.chainSequence)]);
+
 export type User = typeof users.$inferSelect;
 export type ApiKeyRow = typeof apiKeys.$inferSelect;
 export type CreditTransaction = typeof creditTransactions.$inferSelect;
@@ -197,3 +242,5 @@ export type CiJob = typeof ciJobs.$inferSelect;
 export type InsertCiJob = z.infer<typeof insertCiJobSchema>;
 export type Certificate = typeof certificates.$inferSelect;
 export type InsertCertificate = z.infer<typeof insertCertificateSchema>;
+export type ScheduledTarget = typeof scheduledTargets.$inferSelect;
+export type ReceiptChainRow = typeof receiptChain.$inferSelect;

@@ -1,3 +1,7 @@
+// STUB: Replit chat routes — see ../chat/index.ts.
+// Planned: Chat streaming for Replit demos.
+// Status: Not production-ready. Do not expose to users without review.
+
 import type { Express, Request, Response } from "express";
 import OpenAI from "openai";
 import { chatStorage } from "./storage";
