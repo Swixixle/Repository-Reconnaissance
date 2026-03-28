@@ -1,0 +1,37 @@
+---
+description: Debrief project orientation — applied to all files in this repo
+globs:
+  - "**/*"
+alwaysApply: true
+---
+
+# Debrief — Cursor project rule
+
+## Names
+- User-facing copy: **Debrief** only.
+- Evidence/receipt/chain internals: **PTA (Proof Trust Anchor)** is OK in code/comments.
+- npm package: `debrief`. Python distribution: `debrief-analyzer`. CLI: `debrief` (legacy `pta` alias exists — do not add new references).
+
+## Before large edits, read
+- `ONBOARDING.md` and `docs/ARCHITECTURE.md` for system design
+- `RISKS_AND_GAPS.md` for known deferred decisions
+- `.env.example` for required env vars
+- For chain work: `server/scheduler.ts`, `server/receiptChainFinalize.ts`, `server/routes/targets-chain.ts`, `shared/schema.ts`
+
+## Commands
+- Dev: `npm run dev`
+- Build + test: `npm run build && npm run test:unit`
+- DB schema: `npm run db:push` (requires `DATABASE_URL`)
+- Python tests: `pytest server/analyzer/tests/`
+- Chain verify: `debrief verify-chain <TARGET_UUID> [--json]`
+
+## Hard constraints
+- Never commit `.env` or secrets of any kind.
+- Do not modify `package-lock.json` or `uv.lock` unless the task is dependency work.
+- Prefer minimal diffs; match existing code patterns.
+- TypeScript has known non-blocking errors — check `docs/internal/TYPECHECK_TODO.md` before suppressing with `@ts-ignore`.
+- `.github/dependabot.yml` grouping is intentional; `cryptography` pip group is an isolated carve-out, not a bug.
+
+## Security
+- Undisclosed vulnerabilities go to `docs/SECURITY.md`, not public GitHub issues.
+- `npm audit` was 0 locally at last check; GitHub Dependabot alert count can lag — see `docs/internal/SECURITY_AUDIT.md`.

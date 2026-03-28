@@ -56,8 +56,10 @@ logs/
 .DS_Store
 Thumbs.db
 
-# IDE
-.cursor/
+# IDE — track shared Cursor project rule; ignore other `.cursor/` local state
+.cursor/*
+!.cursor/rules/
+!.cursor/rules/debrief.mdc
 .vscode/settings.json
 .idea/
 

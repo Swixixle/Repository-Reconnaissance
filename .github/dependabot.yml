@@ -1,0 +1,230 @@
+# Dependabot version updates — grouped to reduce PR noise.
+# Security/crypto npm packages (@noble/*, tweetnacl, jsonld, etc.) are not listed in any
+# group, so they still open one PR per dependency for careful review.
+# https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+updates:
+  # ── npm (root app) ──────────────────────────────────────────────────────────
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "America/Indiana/Indianapolis"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+      prefix-development: "deps-dev"
+      include: "scope"
+    labels:
+      - "dependencies"
+    groups:
+      ui-and-data:
+        patterns:
+          - "recharts"
+          - "date-fns"
+          - "react"
+          - "react-dom"
+          - "@types/react*"
+          - "lucide-react"
+          - "clsx"
+          - "tailwind*"
+          - "@tailwindcss/*"
+          - "@radix-ui/*"
+          - "@tanstack/*"
+          - "framer-motion"
+          - "@hookform/*"
+          - "react-*"
+          - "next-themes"
+          - "vaul"
+          - "cmdk"
+          - "embla-carousel-react"
+        update-types:
+          - "minor"
+          - "patch"
+
+      build-tools:
+        patterns:
+          - "vite*"
+          - "@vitejs/*"
+          - "esbuild"
+          - "typescript"
+          - "tsup"
+          - "tsx"
+          - "postcss*"
+          - "autoprefixer"
+          - "drizzle-kit"
+          - "glob"
+        update-types:
+          - "minor"
+          - "patch"
+
+      testing:
+        patterns:
+          - "vitest*"
+          - "@vitest/*"
+          - "jest*"
+          - "@jest/*"
+          - "supertest"
+          - "@types/supertest"
+          - "nock"
+        update-types:
+          - "minor"
+          - "patch"
+
+      server-core:
+        patterns:
+          - "express"
+          - "@types/express"
+          - "express-*"
+          - "cors"
+          - "@types/cors"
+          - "dotenv"
+          - "zod"
+          - "zod-*"
+          - "axios"
+          - "node-fetch"
+          - "openai"
+          - "@clerk/*"
+          - "stripe"
+          - "drizzle-orm"
+          - "drizzle-zod"
+          - "bullmq"
+          - "ioredis"
+          - "pg"
+          - "@types/pg"
+          - "connect-pg-simple"
+          - "@types/connect-pg-simple"
+          - "passport"
+          - "passport-*"
+          - "@types/passport*"
+          - "nodemailer"
+          - "@types/nodemailer"
+          - "multer"
+          - "@types/multer"
+          - "ws"
+          - "@types/ws"
+          - "memorystore"
+          - "extract-zip"
+          - "unzipper"
+          - "@types/unzipper"
+          - "yargs"
+          - "@types/yargs"
+          - "ajv"
+          - "node-cron"
+          - "@types/node-cron"
+          - "p-limit"
+          - "p-retry"
+          - "nanoid"
+        update-types:
+          - "minor"
+          - "patch"
+
+      dev-utils:
+        patterns:
+          - "eslint*"
+          - "@eslint/*"
+          - "prettier*"
+          - "@types/node"
+          - "rimraf"
+          - "concurrently"
+          - "cross-env"
+        update-types:
+          - "minor"
+          - "patch"
+
+      tauri:
+        patterns:
+          - "@tauri-apps/*"
+        update-types:
+          - "minor"
+          - "patch"
+
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # ── npm (bundled GitHub Action — has package-lock.json; Dependabot resolves /.github/debrief-action from repo root)
+  - package-ecosystem: "npm"
+    directory: "/.github/debrief-action"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "America/Indiana/Indianapolis"
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: "ci"
+      prefix-development: "ci-dev"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "ci"
+    groups:
+      action-runtime:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # ── Python (pyproject.toml at repo root) ────────────────────────────────────
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:30"
+      timezone: "America/Indiana/Indianapolis"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "python"
+    groups:
+      # Listed first: each dep can belong to only one group — cryptography gets its own PR for advisory review.
+      # Do NOT use ignore: on cryptography for minor/patch; that would suppress Dependabot updates entirely.
+      python-cryptography:
+        patterns:
+          - "cryptography"
+        update-types:
+          - "minor"
+          - "patch"
+      python-patch-minor:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # ── GitHub Actions (workflows) ─────────────────────────────────────────────
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      day: "monday"
+      time: "06:00"
+      timezone: "America/Indiana/Indianapolis"
+    open-pull-requests-limit: 1
+    commit-message:
+      prefix: "ci"
+    labels:
+      - "ci"
+      - "dependencies"
+    groups:
+      all-actions:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
